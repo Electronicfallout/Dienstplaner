@@ -55,7 +55,7 @@ function render(main) {
       <div class="stat"><span>Soll ${K.MONATE[m - 1]}</span><b>${K.fmtH(st.soll)} h</b></div>
       <div class="stat"><span>Ist bis heute</span><b>${K.fmtH(stToday.istH + stToday.creditH)} h</b><small>Soll bis heute ${K.fmtH(stToday.soll)} h</small></div>
       <div class="stat"><span>Monat</span><b class="${stToday.saldo >= 0 ? 'pos' : 'neg'}">${stToday.saldo >= 0 ? '+' : ''}${K.fmtH(stToday.saldo)} h</b></div>
-      <div class="stat"><span>Zeitkonto gesamt</span><b class="${saldo >= 0 ? 'pos' : 'neg'}">${saldo >= 0 ? '+' : ''}${K.fmtH(saldo)} h</b><small>Plus-/Minusstunden bis heute</small></div>
+      <div class="stat"><span>Zeitkonto gesamt</span><b class="${saldo >= 0 ? 'pos' : 'neg'}">${saldo >= 0 ? '+' : ''}${K.fmtH(saldo)} h</b><small>Plus-/Minusstunden bis heute${admin ? `<br><button class="link" data-act="t-carry" data-e="${emp.id}">Alte Überstunden nachtragen${Number(emp.zaStartH) ? ` (${Number(emp.zaStartH) > 0 ? '+' : ''}${K.fmtH(Number(emp.zaStartH))} h)` : ''}</button>` : ''}</small></div>
     </div>
     ${!admin && todayPlan && todayPlan.type === 'shift' && !todayRec && y === td.y && m === td.m ? `
       <div class="quick">
@@ -156,3 +156,28 @@ act('t-edit', async ({ d }) => {
 });
 
 registerView('times', { title: 'Zeiten', icon: '⏱️', roles: ['admin', 'employee'], render });
+
+// Nur Planer: Stand der alten Überstunden (vor Beginn des Zeitkontos) nachtragen
+act('t-carry', async ({ e: id }) => {
+  const plan = App.plan.obj;
+  const e = plan.employees[id];
+  if (!isAdmin() || !e) return;
+  const from = e.saldoFrom || plan.settings.saldoFrom || '';
+  const r = await openModal({
+    title: `${esc(e.name)}: alte Überstunden`,
+    body: `<p>Stand der Plus- oder Minusstunden ${from ? `zum Beginn des Zeitkontos am <b>${K.fmtDate(from, true)}</b>` : 'zum Beginn des Zeitkontos'}. Alles, was danach geplant oder erfasst wird, rechnet die App selbst dazu.</p>
+      <label class="field"><span>Überstunden (Minusstunden mit −, z. B. 60 oder −4,5)</span><input type="text" inputmode="decimal" name="h" value="${esc(String(e.zaStartH ?? 0).replace('.', ','))}"></label>
+      <label class="field"><span>Stand am (leer = Beginn Zeitkonto für alle)</span><input type="date" name="from" value="${esc(e.saldoFrom || '')}"></label>`,
+    buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'ok' }],
+    onAction(v, root) {
+      if (!v) return null;
+      const f = formData(root);
+      const h = Number(String(f.h).replace('−', '-').replace(',', '.').trim() || 0);
+      if (!Number.isFinite(h)) { toast('Bitte eine Zahl eingeben', 'error'); return false; }
+      return { h, from: f.from };
+    },
+  });
+  if (!r) return;
+  App.plan.update((p) => { p.employees[id] = { ...p.employees[id], zaStartH: r.h, saldoFrom: r.from || null, updatedAt: now() }; });
+  toast(`Gespeichert: ${r.h >= 0 ? '+' : ''}${K.fmtH(r.h)} h`);
+});
