@@ -64,9 +64,12 @@ function render(main) {
         <label class="field"><span>Urlaub (Wochen pro Jahr)</span><input type="number" name="vacationWeeks" step="0.5" min="0" value="${esc(s.vacationWeeks)}"></label>
         <label class="field"><span>Arbeitstage pro Woche (für Tagessoll)</span><input type="number" name="workdaysPerWeek" step="0.5" min="1" max="7" value="${esc(s.workdaysPerWeek)}"></label>
         <label class="field"><span>Zeitkonto zählt ab (für alle)</span><input type="date" name="saldoFrom" value="${esc(s.saldoFrom || '')}"></label>
+        <label class="field"><span>Frühschicht = Beginn bis</span><input type="time" name="fruehBis" value="${esc(s.fruehBis || '09:00')}"></label>
+        <label class="field"><span>Spätschicht = Ende ab</span><input type="time" name="spaetAb" value="${esc(s.spaetAb || '21:00')}"></label>
+        <label class="check"><input type="checkbox" name="coverageCheck" ${s.coverageCheck !== false ? 'checked' : ''}><span>Mo–Fr prüfen, ob Früh, Mittel und Spät besetzt sind</span></label>
         <div class="field"><span>&nbsp;</span><button class="btn primary" data-act="rules-save">Regeln speichern</button></div>
       </form>
-      <p class="small muted">Ein Dienst, der länger als ${esc(s.pauseAfterH)} Stunden dauert, bekommt automatisch ${esc(s.pauseMin)} Minuten Pause abgezogen. Feiertage (Österreich) sind automatisch eingetragen; im Plan auf einen Tag tippen, um das zu ändern.</p>
+      <p class="small muted">Ein Dienst, der länger als ${esc(s.pauseAfterH)} Stunden dauert, bekommt automatisch ${esc(s.pauseMin)} Minuten Pause abgezogen. Feiertage (Österreich) sind automatisch eingetragen; im Plan auf einen Tag tippen, um das zu ändern. Besetzung: Alles zwischen Früh- und Spätschicht zählt als Mittelschicht. Feiertage werden nicht geprüft.</p>
     </section>
 
     <section class="card">
@@ -296,7 +299,8 @@ act('rules-save', () => {
   App.plan.update((p) => {
     p.settings = {
       ...p.settings, firma: f.firma.trim(), pauseAfterH: Number(f.pauseAfterH), pauseMin: Number(f.pauseMin),
-      vacationWeeks: Number(f.vacationWeeks), workdaysPerWeek: Number(f.workdaysPerWeek) || 5, saldoFrom: f.saldoFrom || null, updatedAt: now(),
+      vacationWeeks: Number(f.vacationWeeks), workdaysPerWeek: Number(f.workdaysPerWeek) || 5, saldoFrom: f.saldoFrom || null,
+      fruehBis: f.fruehBis || '09:00', spaetAb: f.spaetAb || '21:00', coverageCheck: !!f.coverageCheck, updatedAt: now(),
     };
   });
   document.querySelector('.brand span').textContent = f.firma.trim() || 'Dienstplaner';

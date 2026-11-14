@@ -235,6 +235,7 @@ table.times tfoot td { background: var(--surface-2); font-weight: 600; }
 .quick span { flex: 1 1 200px; }
 .notice { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
 .notice.warn { background: var(--warn-bg); color: var(--warn); }
+.gap { display: inline-block; font-size: .75rem; font-weight: 600; color: var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 1px 6px; }
 .empty-state { text-align: center; padding: 40px 16px; color: var(--muted); }
 
 /* ---------- Urlaub ---------- */
@@ -301,7 +302,7 @@ table.yearview td { width: 12px; min-width: 12px; border-left: 1px solid var(--s
 body.printmode { background: #fff; }
 body.printmode { --bg: #fff; --surface: #fff; --surface-2: #f2f2f2; --me: #fff; --line: #999; --text: #000; --muted: #444; --sat: #fafafa; color: #000; }
 body.printmode .topbar, body.printmode .tabs, body.printmode .toolbar .btn, body.printmode .toolbar .icon-btn, body.printmode .hint,
-body.printmode #toast, body.printmode .quick, body.printmode .notice, body.printmode .draft-tag, body.printmode .add-hint, body.printmode .noprint { display: none !important; }
+body.printmode #toast, body.printmode .quick, body.printmode .notice, body.printmode .draft-tag, body.printmode .add-hint, body.printmode .gap, body.printmode .noprint { display: none !important; }
 body.printmode .toolbar { justify-content: flex-start; margin-bottom: 4px; }
 body.printmode #main { padding: 0; max-width: none; margin: 0; }
 body.printmode .table-scroll { overflow: visible; border: 0; }

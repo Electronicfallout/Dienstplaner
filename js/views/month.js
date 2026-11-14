@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf } from '../app.js';
 import { esc, act, loadScript, toast } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished, eventsOn } from '../model.js';
+import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished, eventsOn, coverageGaps } from '../model.js';
 import { cellHtml, editEntry, diffBadge } from './plan.js';
 
 const td = K.parseIso(K.today());
@@ -40,7 +40,7 @@ function render(main) {
         const hol = K.holidayName(d, plan.settings);
         const day = alive(plan.days[d]) ? plan.days[d] : {};
         return `<tr class="${isPublished(plan, d) ? '' : 'draft'} ${wd === 6 ? 'sun' : ''} ${wd === 5 ? 'sat' : ''} ${hol ? 'holiday' : ''} ${d === t ? 'today' : ''}">
-          <th class="sticky"><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(d)}${isPublished(plan, d) ? '' : ' <span class="draft-tag">Entwurf</span>'}</th>
+          <th class="sticky"><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(d)}${isPublished(plan, d) ? '' : ' <span class="draft-tag">Entwurf</span>'}${admin && coverageGaps(plan, d).length ? ` <span class="gap" title="fehlt: ${coverageGaps(plan, d).join(', ')}">⚠ ${coverageGaps(plan, d).map((x) => x[0]).join('')}</span>` : ''}</th>
           ${emps.map((e) => {
             if (!employed(e, d)) return '<td class="off"></td>';
             if (!admin && !isPublished(plan, d)) return '<td class="muted">–</td>';

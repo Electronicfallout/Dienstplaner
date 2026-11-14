@@ -282,3 +282,27 @@ export function eventsOn(plan, date) {
   for (const r of recurringOn(plan, date)) out.push({ title: r.title, recurring: true, noPrint: !!r.noPrint, id: r.id });
   return out;
 }
+
+// Besetzungsprüfung: Mo–Fr braucht es je eine Früh-, Mittel- und Spätschicht
+export function coverageOn(plan) {
+  return plan.settings.coverageCheck !== false;
+}
+
+export function shiftSlot(start, end, settings) {
+  const s = parseTime(start), e = parseTime(end);
+  if (s === null || e === null) return null;
+  if (s <= (parseTime(settings.fruehBis || '09:00') ?? 540)) return 'Früh';
+  if (e >= (parseTime(settings.spaetAb || '21:00') ?? 1260)) return 'Spät';
+  return 'Mittel';
+}
+
+export function coverageGaps(plan, date) {
+  if (!coverageOn(plan) || weekday(date) > 4 || holidayName(date, plan.settings)) return [];
+  const have = new Set();
+  for (const e of employeesSorted(plan)) {
+    if (!employed(e, date)) continue;
+    const r = resolve(plan, planEntry(plan, date, e.id), e, date);
+    if (r && r.type === 'shift') have.add(shiftSlot(r.start, r.end, plan.settings));
+  }
+  return ['Früh', 'Mittel', 'Spät'].filter((x) => !have.has(x));
+}

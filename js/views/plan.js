@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive, setEntry, isPublished, eventsOn, recurringOn, recurringText } from '../model.js';
+import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive, setEntry, isPublished, eventsOn, recurringOn, recurringText, coverageGaps } from '../model.js';
 import { now } from '../store.js';
 import { LS } from '../storage.js';
 
@@ -71,6 +71,7 @@ function render(main) {
       </div>
     </div>
     ${admin && draftDays.length ? `<div class="notice draft">✏️ <b>Entwurf:</b> ${draftDays.length === days.length ? 'Diese Woche ist' : `Ab ${K.fmtDate(draftDays[0])} ist die Woche`} noch nicht veröffentlicht. Die Mitarbeiter sehen sie noch nicht. ${pubUntil ? `Veröffentlicht bis ${K.fmtDate(pubUntil, true)}.` : ''}</div>` : ''}
+    ${admin && days.some((d) => coverageGaps(plan, d).length) ? `<div class="notice warn">⚠ <b>Besetzung:</b> ${days.filter((d) => coverageGaps(plan, d).length).map((d) => `${K.WOCHENTAGE[K.weekday(d)]} fehlt ${coverageGaps(plan, d).join(', ')}`).join(' · ')}</div>` : ''}
     ${admin && !pubUntil ? '<div class="notice">Tipp: Mit <b>Veröffentlichen</b> gibst du den Plan bis zu einem Datum für die Mitarbeiter frei. Spätere Änderungen daran werden dann protokolliert und den Betroffenen angezeigt.</div>' : ''}
     ${!admin && draftDays.length ? `<div class="notice draft">${draftDays.length === days.length ? 'Diese Woche ist noch nicht veröffentlicht.' : `Ab ${K.fmtDate(draftDays[0])} ist der Plan noch nicht veröffentlicht.`}</div>` : ''}`;
 
@@ -79,6 +80,7 @@ function render(main) {
     return;
   }
 
+  const gapHtml = (d) => { const g = coverageGaps(plan, d); return g.length ? `<span class="gap">⚠ fehlt: ${g.join(', ')}</span>` : ''; };
   const dayInfo = (d) => (alive(plan.days[d]) ? plan.days[d] : {});
   const evHtml = (d) => eventsOn(plan, d).map((e) => `<span class="event ${e.recurring ? 'rec' : ''} ${e.noPrint ? 'noprint' : ''}">${e.recurring ? '↻' : '🎲'} ${esc(e.title)}</span>`).join('');
   const dayHead = (d, withEvents) => {
@@ -88,6 +90,7 @@ function render(main) {
       <b>${K.WOCHENTAGE[K.weekday(d)]} ${K.fmtDate(d)}</b>
       ${hol ? `<span class="hol">${esc(hol)}</span>` : ''}
       ${!isPublished(plan, d) ? '<span class="draft-tag">Entwurf</span>' : ''}
+      ${admin ? gapHtml(d) : ''}
       ${withEvents ? evHtml(d) : ''}
       ${withEvents && ev.note ? `<span class="daynote">📝 ${esc(ev.note)}</span>` : ''}
       ${withEvents && admin && !eventsOn(plan, d).length && !ev.note ? '<span class="add-hint">+ Event / Anmerkung</span>' : ''}
@@ -240,6 +243,7 @@ act('publish', async () => {
         <label><input type="radio" name="opt" value="custom"><span>anderes Datum</span></label>
       </div>
       <label class="field"><span>Datum</span><input type="date" name="date" value="${sun}"></label>
+      ${(() => { const g = [0, 1, 2, 3, 4].map((i) => K.addDays(App.week, i)).filter((d) => coverageGaps(plan, d).length); return g.length ? `<p class="notice warn">⚠ Diese Woche ist nicht jeden Tag voll besetzt: ${g.map((d) => `${K.WOCHENTAGE[K.weekday(d)]} fehlt ${coverageGaps(plan, d).join(', ')}`).join(' · ')}</p>` : ''; })()}
       ${cur ? `<p class="small muted">Bisher veröffentlicht bis ${K.fmtDate(cur, true)}.</p>` : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Veröffentlichen', kind: 'primary', value: 'ok' }],
     onOpen(root) {
