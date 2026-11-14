@@ -1,6 +1,6 @@
 // Offline-Unterstützung: App-Dateien und Bibliotheken zwischenspeichern.
 // Dropbox-Aufrufe werden nie zwischengespeichert.
-const VERSION = 'dp-v7';
+const VERSION = 'dp-v8';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/main.js', 'js/app.js', 'js/calc.js', 'js/crypto.js', 'js/storage.js', 'js/store.js', 'js/model.js', 'js/ui.js', 'js/import-excel.js', 'js/keystore.js', 'js/notify.js', 'js/ics.js', 'js/pdf.js',
@@ -10,7 +10,7 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -24,7 +24,8 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== location.origin) return;
   // Netz zuerst (damit Updates sofort ankommen), sonst Zwischenspeicher
   e.respondWith(
-    fetch(e.request).then((r) => {
+    // Browser-Cache umgehen (GitHub Pages hält Dateien sonst bis zu 10 min)
+    fetch(new Request(url.href, { cache: 'no-cache', credentials: 'same-origin' })).then((r) => {
       if (r.ok) { const copy = r.clone(); caches.open(VERSION).then((c) => c.put(e.request, copy)); }
       return r;
     }).catch(() => caches.match(e.request, { ignoreSearch: true }).then((r) => r || (e.request.mode === 'navigate' ? caches.match('index.html') : Response.error())))

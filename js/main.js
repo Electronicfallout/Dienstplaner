@@ -8,7 +8,19 @@ import './views/settings.js';
 import './pdf.js';
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW', e));
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    setInterval(check, 30 * 60 * 1000);
+  }).catch((e) => console.warn('SW', e));
+  // Neue Version übernommen: einmal neu laden, damit sie sofort sichtbar ist
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded || document.querySelector('.modal-wrap')) return;
+    reloaded = true;
+    location.reload();
+  });
 }
 
 boot().catch((e) => {
