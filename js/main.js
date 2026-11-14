@@ -23,6 +23,23 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   });
 }
 
+// Plan-Tabellen so hoch machen, dass sie bis zum unteren Rand reichen: dann scrollt man in der Tabelle
+// und Namenszeile oben sowie Tagesspalte links bleiben stehen (wie fixierte Zeilen in Excel).
+function fitTables() {
+  const bar = document.querySelector('.tabs');
+  const barH = bar && getComputedStyle(bar).position === 'fixed' ? bar.offsetHeight : 0;
+  document.querySelectorAll('.table-scroll').forEach((el) => {
+    if (!el.querySelector(':scope > table.plan')) return;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    const h = Math.max(300, window.innerHeight - top - barH - 12);
+    el.style.maxHeight = h + 'px';
+  });
+}
+let fitT = 0;
+const fitSoon = () => { clearTimeout(fitT); fitT = setTimeout(fitTables, 30); };
+new MutationObserver(fitSoon).observe(document.getElementById('app'), { childList: true, subtree: true });
+window.addEventListener('resize', fitSoon);
+
 boot().catch((e) => {
   console.error(e);
   document.getElementById('app').innerHTML = `<main class="screen"><div class="center-card"><h2>Fehler beim Start</h2><p>${String(e.message || e).replace(/</g, '&lt;')}</p><button class="btn primary" onclick="location.reload()">Neu laden</button></div></main>`;

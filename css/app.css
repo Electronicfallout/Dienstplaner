@@ -168,12 +168,16 @@ textarea { resize: vertical; font-family: ui-monospace, Consolas, monospace; fon
 
 /* ---------- Plan-Tabelle ---------- */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+/* Plan-Tabellen scrollen in sich: Namenszeile oben und Tagesspalte links bleiben stehen (wie fixierte Zeilen in Excel) */
+.table-scroll:has(> table.plan) { overflow: auto; max-height: calc(100dvh - 150px); }
 table { border-collapse: separate; border-spacing: 0; width: 100%; }
 table.plan th, table.plan td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 6px 8px; vertical-align: top; text-align: left; }
-table.plan thead th { background: var(--surface-2); font-size: .85rem; white-space: nowrap; position: sticky; top: 0; }
+table.plan thead th { background: var(--surface-2); font-size: .85rem; white-space: nowrap; position: sticky; top: 0; z-index: 2; box-shadow: inset 0 -1px 0 var(--line); }
+table.plan:not(.month) tfoot th, table.plan:not(.month) tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--surface-2); box-shadow: inset 0 1px 0 var(--line); }
+table.plan:not(.month) tfoot .sticky { z-index: 3; left: 0; }
 table.plan thead th small { display: block; color: var(--muted); font-weight: 400; }
 table.plan .sticky { position: sticky; left: 0; background: var(--surface); z-index: 1; min-width: 108px; }
-table.plan thead .sticky { z-index: 2; background: var(--surface-2); }
+table.plan thead .sticky { z-index: 3; background: var(--surface-2); }
 table.plan td { min-width: 104px; }
 table.plan tr.sat td, table.plan tr.sat th { background: var(--sat); }
 table.plan tr.sun td, table.plan tr.sun th.sticky { background: var(--surface-2); color: var(--muted); }
@@ -305,10 +309,10 @@ body.printmode .topbar, body.printmode .tabs, body.printmode .toolbar .btn, body
 body.printmode #toast, body.printmode .quick, body.printmode .notice, body.printmode .draft-tag, body.printmode .add-hint, body.printmode .gap, body.printmode .noprint { display: none !important; }
 body.printmode .toolbar { justify-content: flex-start; margin-bottom: 4px; }
 body.printmode #main { padding: 0; max-width: none; margin: 0; }
-body.printmode .table-scroll { overflow: visible; border: 0; }
+body.printmode .table-scroll { overflow: visible; border: 0; max-height: none !important; }
 body.printmode table.plan { font-size: 10px; width: auto; }
 body.printmode table.plan td, body.printmode table.plan th { padding: 2px 4px; min-width: 0; }
-body.printmode table.plan .sticky, body.printmode table.plan thead th { position: static; }
+body.printmode table.plan .sticky, body.printmode table.plan thead th, body.printmode table.plan tfoot th, body.printmode table.plan tfoot td { position: static; }
 body.printmode table.plan.month td.ev { min-width: 0; max-width: 260px; }
 body.printmode table.plan td.evcol, body.printmode table.plan th.evcol { min-width: 0; max-width: 220px; }
 body.printmode table.plan tr.draft td { background-image: none; }
