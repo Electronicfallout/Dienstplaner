@@ -129,8 +129,12 @@ act('welcome-admin', async () => {
     buttons: [{ label: 'Nur ausprobieren', value: 'local' }, { label: 'Mit Dropbox verbinden', kind: 'primary', value: 'dropbox' }],
     onAction(v, root) {
       if (v === 'dropbox') {
-        const k = root.querySelector('[name=appKey]').value.trim();
-        if (!/^[a-z0-9]{8,32}$/i.test(k)) { toast('Bitte den App-Key eingeben', 'error'); return false; }
+        const raw = root.querySelector('[name=appKey]').value;
+        // tolerant: unsichtbare Zeichen, Leerzeichen oder „App key:“ davor entfernen
+        const tokens = raw.replace(/[\u200B-\u200D\uFEFF]/g, '').split(/[^A-Za-z0-9]+/).filter((t) => t.length >= 6);
+        const k = tokens.sort((a, b) => b.length - a.length)[0] || '';
+        if (!k) { toast('Bitte den App-Key eingeben', 'error'); return false; }
+        if (k.length < 10 || k.length > 30) { toast(`„${k}“ sieht nicht wie ein App-Key aus (meist 15 Zeichen)`, 'error'); return false; }
         return { mode: 'dropbox', appKey: k };
       }
       return v ? { mode: 'local' } : null;
