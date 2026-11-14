@@ -172,16 +172,55 @@ export async function printDialog() {
   });
   if (!r) return;
   LS.set('dp.print', r);
+  // Liste druckt schlecht; für den Druck kurz auf Tabelle umschalten
+  const prevLayout = LS.get('dp.layout');
+  const switched = App.view === 'plan' && (prevLayout || (window.innerWidth < 760 ? 'list' : 'table')) === 'list';
+  if (switched) { LS.set('dp.layout', 'table'); render(document.getElementById('main')); }
+  setTimeout(() => {
+    window.print();
+    if (switched) { if (prevLayout) LS.set('dp.layout', prevLayout); else LS.del('dp.layout'); render(document.getElementById('main')); }
+  }, 100);
+}
+
+// Vor jedem Druck (auch Strg+P): Seitenformat setzen und Tabelle auf eine Seite skalieren
+function preparePrint() {
+  const orient = LS.get('dp.print') || 'landscape';
   let st = document.getElementById('page-style');
   if (!st) { st = document.createElement('style'); st.id = 'page-style'; document.head.appendChild(st); }
-  st.textContent = `@page { size: A4 ${r}; margin: 10mm; }`;
-  // Liste druckt schlecht quer; für den Druck kurz auf Tabelle umschalten
-  const prevLayout = LS.get('dp.layout');
-  if (App.view === 'plan' && (prevLayout || (window.innerWidth < 760 ? 'list' : 'table')) === 'list') {
-    LS.set('dp.layout', 'table'); render(document.getElementById('main'));
-    setTimeout(() => { window.print(); if (prevLayout) LS.set('dp.layout', prevLayout); else LS.del('dp.layout'); render(document.getElementById('main')); }, 100);
-  } else setTimeout(() => window.print(), 100);
+  st.textContent = `@page { size: A4 ${orient}; margin: 8mm; }`;
+  document.body.classList.add('printmode');
+  const main = document.getElementById('main');
+  if (!main) return;
+  main.style.zoom = ''; main.style.width = '';
+  if (!main.querySelector('table.plan')) return;
+  // druckbare Fläche A4 minus Ränder, in CSS-Pixeln (96 dpi), mit etwas Reserve
+  const mm = 96 / 25.4;
+  const pageW = ((orient === 'landscape' ? 297 : 210) - 16) * mm * 0.98;
+  const pageH = ((orient === 'landscape' ? 210 : 297) - 16) * mm * 0.97;
+  // Breite und Höhe hängen voneinander ab (Zeilenumbrüche): größten passenden Faktor suchen
+  const fits = (z) => {
+    main.style.width = (pageW / z) + 'px';
+    const w = Math.max(main.scrollWidth, ...Array.from(main.querySelectorAll('table')).map((t) => t.scrollWidth));
+    return w * z <= pageW + 1 && main.scrollHeight * z <= pageH + 1;
+  };
+  let z = 1;
+  if (!fits(1)) {
+    let lo = 0.25, hi = 1;
+    for (let i = 0; i < 10; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+    z = lo;
+  }
+  main.style.width = z < 1 ? (pageW / z) + 'px' : '';
+  if (z < 1) main.style.zoom = String(Math.floor(z * 1000) / 1000);
 }
+
+function endPrint() {
+  document.body.classList.remove('printmode');
+  const main = document.getElementById('main');
+  if (main) { main.style.zoom = ''; main.style.width = ''; }
+}
+
+window.addEventListener('beforeprint', preparePrint);
+window.addEventListener('afterprint', endPrint);
 
 // ---------- Veröffentlichen ----------
 

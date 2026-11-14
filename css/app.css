@@ -292,20 +292,28 @@ table.yearview td { width: 12px; min-width: 12px; border-left: 1px solid var(--s
 #toast.error { background: #a93226; }
 @media (min-width: 760px) { #toast { bottom: 24px; } }
 
-/* ---------- Druck ---------- */
+/* ---------- Druck ----------
+   Die Klasse body.printmode wird beim Drucken gesetzt (auch bei Strg+P), damit die App
+   vor dem Druck messen und auf eine Seite skalieren kann. */
+body.printmode { background: #fff; }
+body.printmode { --bg: #fff; --surface: #fff; --surface-2: #f2f2f2; --me: #fff; --line: #999; --text: #000; --muted: #444; --sat: #fafafa; color: #000; }
+body.printmode .topbar, body.printmode .tabs, body.printmode .toolbar .btn, body.printmode .toolbar .icon-btn, body.printmode .hint,
+body.printmode #toast, body.printmode .quick, body.printmode .notice, body.printmode .draft-tag, body.printmode .add-hint, body.printmode .noprint { display: none !important; }
+body.printmode .toolbar { justify-content: flex-start; margin-bottom: 4px; }
+body.printmode #main { padding: 0; max-width: none; margin: 0; }
+body.printmode .table-scroll { overflow: visible; border: 0; }
+body.printmode table.plan { font-size: 10px; width: auto; }
+body.printmode table.plan td, body.printmode table.plan th { padding: 2px 4px; min-width: 0; }
+body.printmode table.plan .sticky, body.printmode table.plan thead th { position: static; }
+body.printmode table.plan.month td.ev { min-width: 0; max-width: 260px; }
+body.printmode table.plan td.evcol, body.printmode table.plan th.evcol { min-width: 0; max-width: 220px; }
+body.printmode table.plan tr.draft td { background-image: none; }
+body.printmode .from-tpl { opacity: 1; }
+body.printmode .day-list { display: block; }
+body.printmode .day-card { break-inside: avoid; margin-bottom: 6px; }
 @media print {
-  :root { --bg: #fff; --surface: #fff; --surface-2: #f2f2f2; --me: #fff; --line: #999; --text: #000; }
-  .topbar, .toolbar .btn, .toolbar .icon-btn, .hint, #toast, .quick { display: none !important; }
-  .toolbar { justify-content: flex-start; }
-  #main { padding: 0; max-width: none; }
-  .table-scroll { overflow: visible; border: 0; }
-  table.plan { font-size: 10px; }
-  table.plan td, table.plan th { padding: 3px 4px; }
-  table.plan .sticky, table.plan thead th { position: static; }
-  .from-tpl { opacity: 1; }
-  .day-list { display: block; }
-  .day-card { break-inside: avoid; margin-bottom: 6px; }
-  @page { size: A4 landscape; margin: 10mm; }
+  .topbar, .tabs, #toast, .modal-wrap { display: none !important; }
+  html, body { background: #fff !important; }
 }
 .nowrap { white-space: nowrap; }
 .icon-btn.small-icon { width: 34px; height: 34px; font-size: 1rem; }
@@ -324,7 +332,6 @@ table.plan td.evcol, table.plan th.evcol { min-width: 150px; font-size: .85rem; 
 .notif-list .ic { flex: none; width: 24px; text-align: center; }
 .notif-list small { display: block; color: var(--muted); font-weight: 400; }
 .notif-list .grow { flex: 1; min-width: 0; }
-@media print { .notice, .draft-tag, .add-hint { display: none !important; } table.plan tr.draft td { background-image: none; } }
 .event.rec { color: var(--muted); }
 .dayhead .event, td.evcol .event { display: block; }
-@media print { .noprint { display: none !important; } }
+body.printmode table.plan td:not(.ev):not(.evcol), body.printmode table.plan th { white-space: nowrap; }
