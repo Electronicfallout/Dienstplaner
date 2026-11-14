@@ -160,9 +160,11 @@ act('forget-device', async () => {
 
 // ---------- Planer-Anmeldung ----------
 
-function loginFields(user) {
-  // Benutzername (versteckt) hilft dem Passwort-Manager des Browsers beim Speichern
-  return `<input type="text" name="username" autocomplete="username" value="${esc('Dienstplaner ' + user)}" hidden>
+function loginFields(user, visible = false) {
+  // Benutzername hilft dem Passwort-Manager des Browsers beim Speichern (Mitarbeiter: Nachname, sichtbar)
+  return `${visible
+    ? `<label class="field"><span>Benutzer</span><input type="text" name="username" autocomplete="username" value="${esc(user)}" readonly></label>`
+    : `<input type="text" name="username" autocomplete="username" value="${esc('Dienstplaner ' + user)}" hidden>`}
     <input type="password" name="pw" autocomplete="current-password" aria-label="Passwort" placeholder="Passwort">
     <label class="check"><input type="checkbox" name="remember" checked><span>Auf diesem Gerät angemeldet bleiben</span></label>
     <button class="btn primary">Öffnen</button>`;
@@ -279,7 +281,7 @@ async function employeeLogin() {
     try { await C.readVault(v, file); App.remembered = true; return openWith(v); } catch { /* Schlüssel passt nicht mehr */ }
   }
   screen(`<div class="center-card"><h2>${esc(emp.name)}</h2><p>Bitte dein Passwort eingeben.</p>
-    <form id="login" class="stack">${loginFields(emp.name)}</form>
+    <form id="login" class="stack">${loginFields(emp.name, true)}</form>
     <p class="small muted">Passwort vergessen? Der Planer kann es zurücksetzen.</p>
     <button class="link" data-act="emp-switch">Ich bin nicht ${esc(emp.name)}</button></div>`);
   const f = $('#login');
@@ -308,7 +310,7 @@ act('emp-pick', ({ id }) => {
 act('emp-switch', () => { App.cfg.empId = null; saveCfg(); employeeLogin(); });
 
 act('emp-create', async () => {
-  const pw = await promptPassword('Dein Passwort', 'Mindestens 4 Zeichen. Merk es dir gut.', { confirm: true, okLabel: 'Festlegen' });
+  const pw = await promptPassword('Dein Passwort', 'Mindestens 4 Zeichen. Merk es dir gut.', { confirm: true, okLabel: 'Festlegen', user: (App.plan.obj.employees[App.cfg.empId] || {}).name });
   if (!pw) return;
   const pub = App.plan.obj.admin && App.plan.obj.admin.publicKey;
   if (!pub) { toast('Der Planer muss zuerst sein Passwort festlegen', 'error'); return; }

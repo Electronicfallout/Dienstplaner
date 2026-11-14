@@ -84,11 +84,12 @@ export async function confirmBox(text, okLabel = 'OK', danger = false) {
   return r === true;
 }
 
-export async function promptPassword(title, text, { confirm = false, okLabel = 'Weiter' } = {}) {
+export async function promptPassword(title, text, { confirm = false, okLabel = 'Weiter', user = null } = {}) {
   return openModal({
     title,
     body: `<p>${esc(text)}</p>
-      <label class="field"><span>Passwort</span><input type="password" name="pw" autocomplete="current-password"></label>
+      ${user ? `<label class="field"><span>Benutzer</span><input type="text" name="username" autocomplete="username" value="${esc(user)}" readonly></label>` : ''}
+      <label class="field"><span>Passwort</span><input type="password" name="pw" autocomplete="${confirm ? 'new-password' : 'current-password'}"></label>
       ${confirm ? '<label class="field"><span>Passwort wiederholen</span><input type="password" name="pw2" autocomplete="new-password"></label>' : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: okLabel, kind: 'primary', value: 'ok' }],
     onOpen(root) {
