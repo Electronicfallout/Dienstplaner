@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, empDoc } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, vacationYear, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry } from '../model.js';
+import { employeesSorted, vacationYear, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay } from '../model.js';
 import { now } from '../store.js';
 import { randomId } from '../crypto.js';
 
@@ -70,7 +70,7 @@ function render(main) {
           <td class="num"><b class="${v.restH < 0 ? 'neg' : ''}">${fmt(v.restH)}</b></td></tr>`;
       }).join('')}</tbody>
     </table></div>
-    <p class="hint">Anspruch: ${esc(plan.settings.vacationWeeks)} Wochen × Wochenstunden. Ein Urlaubstag zählt ein Tagessoll (Wochenstunden ÷ ${esc(plan.settings.workdaysPerWeek)}), Samstage und Feiertage zählen nicht.</p>`;
+    <p class="hint">Anspruch: ${esc(plan.settings.vacationWeeks)} Wochen × Wochenstunden. Ein Urlaubstag zählt ein Tagessoll (Wochenstunden ÷ Arbeitstage der Person), Samstage, Feiertage und freie Wochentage zählen nicht.</p>`;
 
   const reqList = (list, title) => list.length ? `
     <h3>${title}</h3>
@@ -200,7 +200,7 @@ act('v-approve', async ({ e, r }) => {
     }
   }
   const v = vacationYear(plan, { id: e, ...plan.employees[e] }, K.parseIso(req.from).y);
-  const msg = `${plan.employees[e].name}: ${req.kind || 'Urlaub'} ${K.fmtDate(req.from, true)}–${K.fmtDate(req.to, true)} genehmigen? Rest danach etwa ${K.fmtH(v.restH - days.filter((d) => K.weekday(d) < 5).length * dayTarget(plan.employees[e], plan.settings))} h.`
+  const msg = `${plan.employees[e].name}: ${req.kind || 'Urlaub'} ${K.fmtDate(req.from, true)}–${K.fmtDate(req.to, true)} genehmigen? Rest danach etwa ${K.fmtH(v.restH - days.reduce((a, d) => a + sollDay(plan.employees[e], d, plan.settings), 0))} h.`
     + (away.length ? ` Gleichzeitig weg: ${away.slice(0, 8).join(', ')}${away.length > 8 ? ' …' : ''}` : '');
   if (!(await confirmBox(msg, 'Genehmigen'))) return;
   App.plan.update((p) => writeDays(p, e, days, req.kind || 'Urlaub'));

@@ -28,12 +28,20 @@ export function employed(emp, date) {
 
 // Tagessoll in Stunden (Wochenstunden / Arbeitstage, an Mo–Fr ohne Feiertag)
 export function dayTarget(emp, settings) {
-  return (Number(emp.weeklyHours) || 0) / (settings.workdaysPerWeek || 5);
+  const n = Array.isArray(emp.workDays) && emp.workDays.length ? emp.workDays.length : (settings.workdaysPerWeek || 5);
+  return (Number(emp.weeklyHours) || 0) / n;
+}
+
+// Arbeitet die Person laut Vertrag an diesem Wochentag? (ohne Angabe: Mo–Fr)
+export function isWorkDay(emp, date) {
+  const wd = weekday(date);
+  if (wd > 4) return false;
+  return !(Array.isArray(emp.workDays) && emp.workDays.length) || emp.workDays.includes(wd);
 }
 
 export function sollDay(emp, date, settings) {
   if (!employed(emp, date)) return 0;
-  if (weekday(date) > 4) return 0;
+  if (!isWorkDay(emp, date)) return 0;
   if (holidayName(date, settings)) return 0;
   return dayTarget(emp, settings);
 }

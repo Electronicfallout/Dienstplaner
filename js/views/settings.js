@@ -27,7 +27,7 @@ function render(main) {
         const state = h ? (h.missing ? 'noch nicht angemeldet' : h.error ? 'nicht lesbar' : 'angemeldet') : '';
         return `<li class="${e.active === false ? 'inactive' : ''}">
           <span class="dot" style="background:${e.color}"></span>
-          <div class="grow"><b>${esc(e.name)}</b><small>${K.fmtH(e.weeklyHours)} h/Woche · Tagessoll ${K.fmtH(dayTarget(e, s))} h${e.startDate ? ' · ab ' + K.fmtDate(e.startDate, true) : ''}${e.endDate ? ' · bis ' + K.fmtDate(e.endDate, true) : ''}${state ? ' · ' + state : ''}</small></div>
+          <div class="grow"><b>${esc(e.name)}</b><small>${K.fmtH(e.weeklyHours)} h/Woche · Tagessoll ${K.fmtH(dayTarget(e, s))} h${e.workDays && e.workDays.length ? ' (' + e.workDays.map((i) => K.WOCHENTAGE[i]).join(', ') + ')' : ''}${e.startDate ? ' · ab ' + K.fmtDate(e.startDate, true) : ''}${e.endDate ? ' · bis ' + K.fmtDate(e.endDate, true) : ''}${state ? ' · ' + state : ''}</small></div>
           <button class="btn small" data-act="emp-invite" data-e="${e.id}">Einladen</button>
           <button class="btn small ghost" data-act="emp-edit" data-e="${e.id}">Bearbeiten</button>
         </li>`;
@@ -111,6 +111,8 @@ act('emp-edit', async ({ e: id }) => {
         <label class="field"><span>Wochenstunden</span><input type="number" name="weeklyHours" step="0.5" min="0" value="${esc(e.weeklyHours)}"></label>
         <label class="field"><span>Farbe</span><input type="color" name="color" value="${esc(e.color || '#1f77b4')}"></label>
       </div>
+      <div class="field"><span>Arbeitstage (für Tagessoll, Urlaub und ZA)</span><div class="seg">${[0, 1, 2, 3, 4].map((i) => `<label><input type="checkbox" name="wd${i}" ${!(e.workDays && e.workDays.length) || e.workDays.includes(i) ? 'checked' : ''}><span>${K.WOCHENTAGE[i]}</span></label>`).join('')}</div>
+        <small class="muted">Die Wochenstunden werden auf diese Tage verteilt. Bei freier Zeiteinteilung die Tage wählen, an denen sie meistens arbeitet.</small></div>
       <div class="row2">
         <label class="field"><span>Eintritt (optional)</span><input type="date" name="startDate" value="${esc(e.startDate || '')}"></label>
         <label class="field"><span>Austritt (optional)</span><input type="date" name="endDate" value="${esc(e.endDate || '')}"></label>
@@ -141,6 +143,7 @@ act('emp-edit', async ({ e: id }) => {
       startDate: r.startDate || null, endDate: r.endDate || null,
       saldoFrom: r.saldoFrom || null, zaStartH: Number(r.zaStartH) || 0,
       vacationAdjust: { ...(old.vacationAdjust || {}), [y]: Number(r.vacAdj) || 0 },
+      workDays: (() => { const w = [0, 1, 2, 3, 4].filter((i) => r['wd' + i]); return w.length && w.length < 5 ? w : null; })(),
       active: r.active, order: old.order ?? Object.keys(p.employees).length,
       updatedAt: now(),
     };
