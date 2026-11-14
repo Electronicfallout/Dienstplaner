@@ -4,7 +4,8 @@ import { App, registerView, empDoc, loadEmployeeVaults } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox, promptPassword, loadScript, download, pickFile } from '../ui.js';
 import * as K from '../calc.js';
 import * as C from '../crypto.js';
-import { employeesSorted, shiftsSorted, alive, dayTarget } from '../model.js';
+import { employeesSorted, shiftsSorted, alive, dayTarget, recurringText } from '../model.js';
+import { importIcs } from '../ics.js';
 import { now, COLORS, merge, clone } from '../store.js';
 import { makeInvite, redirectUri } from '../storage.js';
 import { importExcel } from '../import-excel.js';
@@ -15,6 +16,7 @@ function render(main) {
   const emps = employeesSorted(plan, true);
   const shifts = shiftsSorted(plan);
   const isDropbox = App.cfg.mode === 'dropbox';
+  const recs = Object.entries(plan.recurring || {}).filter(([, r]) => alive(r)).map(([id, r]) => ({ id, ...r })).sort((a, b) => a.weekday - b.weekday || a.title.localeCompare(b.title));
 
   main.innerHTML = `
   <div class="settings">
@@ -35,6 +37,12 @@ function render(main) {
     <section class="card">
       <div class="card-head"><h2>Schichten</h2><button class="btn small primary" data-act="shift-edit">+ Neu</button></div>
       <ul class="list">${shifts.map((sh) => `<li><div class="grow"><b>${esc(sh.start)}–${esc(sh.end)}</b><small>${esc(sh.label)} · ${K.fmtH(K.workHours(sh.start, sh.end, s))} h Arbeitszeit</small></div><button class="btn small ghost" data-act="shift-edit" data-id="${sh.id}">Bearbeiten</button></li>`).join('')}</ul>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Events im Shop</h2><div class="btn-row"><button class="btn small" data-act="ics-import">Kalender (.ics) importieren</button><button class="btn small primary" data-act="rec-edit">+ Wiederkehrend</button></div></div>
+      <p class="small muted">Einzelne Events trägst du direkt im Plan beim Tag ein. Hier legst du regelmäßige Events an, z. B. jeden Freitag Commander.</p>
+      ${recs.length ? `<ul class="list">${recs.map((r) => `<li><div class="grow"><b>↻ ${esc(r.title)}</b><small>${esc(recurringText(r))}${r.from ? ' · ab ' + K.fmtDate(r.from, true) : ''}${r.to ? ' · bis ' + K.fmtDate(r.to, true) : ''}${r.noPrint ? ' · wird nicht gedruckt' : ''}</small></div><button class="btn small ghost" data-act="rec-edit" data-id="${r.id}">Bearbeiten</button></li>`).join('')}</ul>` : '<p class="muted">Noch keine wiederkehrenden Events.</p>'}
     </section>
 
     <section class="card">
@@ -306,6 +314,60 @@ act('restore', async () => {
 });
 
 act('import-xlsx', () => importExcel());
+
+// ---------- Wiederkehrende Events ----------
+
+act('rec-edit', async ({ id }) => {
+  const plan = App.plan.obj;
+  const r0 = id ? plan.recurring[id] : { title: '', weekday: 4, every: 'week', nth: 1, from: K.today(), to: '', noPrint: true };
+  const r = await openModal({
+    title: id ? 'Wiederkehrendes Event' : 'Neues wiederkehrendes Event',
+    body: `
+      <label class="field"><span>Name</span><input name="title" value="${esc(r0.title)}" maxlength="60" placeholder="z. B. Commander Night"></label>
+      <div class="row2">
+        <label class="field"><span>Wochentag</span><select name="weekday">${K.WOCHENTAGE_LANG.map((n, i) => `<option value="${i}" ${Number(r0.weekday) === i ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label class="field"><span>Wie oft</span><select name="every">
+          <option value="week" ${r0.every === 'week' ? 'selected' : ''}>jede Woche</option>
+          <option value="2weeks" ${r0.every === '2weeks' ? 'selected' : ''}>jede 2. Woche</option>
+          <option value="month" ${r0.every === 'month' ? 'selected' : ''}>einmal im Monat</option></select></label>
+      </div>
+      <label class="field" data-nth><span>Welcher im Monat</span><select name="nth">${[1, 2, 3, 4, -1].map((n) => `<option value="${n}" ${Number(r0.nth || 1) === n ? 'selected' : ''}>${n === -1 ? 'letzter' : n + '.'}</option>`).join('')}</select></label>
+      <div class="row2">
+        <label class="field"><span>Ab</span><input type="date" name="from" value="${esc(r0.from || '')}"></label>
+        <label class="field"><span>Bis (optional)</span><input type="date" name="to" value="${esc(r0.to || '')}"></label>
+      </div>
+      <label class="check"><input type="checkbox" name="noPrint" ${r0.noPrint ? 'checked' : ''}><span>Beim Drucken ausblenden</span></label>
+      <p class="small muted">Einzelne Termine nimmst du aus, indem du im Plan auf den Tag tippst und das Häkchen beim Event entfernst. Bei „jede 2. Woche“ zählt das Ab-Datum als erster Termin.</p>
+      ${id ? `<hr><button class="btn small danger" data-act="rec-delete" data-id="${id}">Event löschen</button>` : ''}`,
+    buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'ok' }],
+    onOpen(root) {
+      const upd = () => { root.querySelector('[data-nth]').hidden = root.querySelector('[name=every]').value !== 'month'; };
+      root.addEventListener('change', upd); upd();
+    },
+    onAction(v, root) {
+      if (!v) return null;
+      const f = formData(root);
+      if (!f.title.trim()) { toast('Name fehlt', 'error'); return false; }
+      return f;
+    },
+  });
+  if (!r) return;
+  App.plan.update((p) => {
+    p.recurring = p.recurring || {};
+    const nid = id || 'r' + C.randomId(6);
+    const old = p.recurring[nid] || {};
+    p.recurring[nid] = { ...old, title: r.title.trim(), weekday: Number(r.weekday), every: r.every, nth: Number(r.nth), from: r.from || null, to: r.to || null, noPrint: r.noPrint, skip: old.skip || {}, updatedAt: now() };
+  });
+});
+
+act('rec-delete', async ({ id }) => {
+  if (!(await confirmBox('Wiederkehrendes Event löschen?', 'Löschen', true))) return;
+  document.querySelectorAll('.modal-wrap').forEach((w) => w.remove());
+  document.body.classList.remove('modal-open');
+  App.plan.update((p) => { p.recurring[id] = { deleted: true, updatedAt: now() }; });
+});
+
+act('ics-import', () => importIcs());
 
 // ---------- Verbindung ----------
 

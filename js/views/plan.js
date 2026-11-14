@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive, setEntry, isPublished } from '../model.js';
+import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive, setEntry, isPublished, eventsOn, recurringOn, recurringText } from '../model.js';
 import { now } from '../store.js';
 import { LS } from '../storage.js';
 
@@ -29,7 +29,7 @@ function weekDays(mon, plan, emps) {
     if (i === 6) {
       const any = emps.some((e) => { const pe = planEntry(plan, d, e.id); return pe && pe.source === 'plan' && !(pe.kind === 'status' && pe.status === 'Frei'); });
       const day = plan.days[d];
-      if (!any && !(alive(day) && (day.event || day.note))) continue;
+      if (!any && !(alive(day) && (day.event || day.note)) && !recurringOn(plan, d).length) continue;
     }
     out.push(d);
   }
@@ -79,6 +79,7 @@ function render(main) {
   }
 
   const dayInfo = (d) => (alive(plan.days[d]) ? plan.days[d] : {});
+  const evHtml = (d) => eventsOn(plan, d).map((e) => `<span class="event ${e.recurring ? 'rec' : ''} ${e.noPrint ? 'noprint' : ''}">${e.recurring ? '↻' : '🎲'} ${esc(e.title)}</span>`).join('');
   const dayHead = (d, withEvents) => {
     const hol = K.holidayName(d, plan.settings);
     const ev = dayInfo(d);
@@ -86,9 +87,9 @@ function render(main) {
       <b>${K.WOCHENTAGE[K.weekday(d)]} ${K.fmtDate(d)}</b>
       ${hol ? `<span class="hol">${esc(hol)}</span>` : ''}
       ${!isPublished(plan, d) ? '<span class="draft-tag">Entwurf</span>' : ''}
-      ${withEvents && ev.event ? `<span class="event">🎲 ${esc(ev.event)}</span>` : ''}
+      ${withEvents ? evHtml(d) : ''}
       ${withEvents && ev.note ? `<span class="daynote">📝 ${esc(ev.note)}</span>` : ''}
-      ${withEvents && admin && !ev.event && !ev.note ? '<span class="add-hint">+ Event / Anmerkung</span>' : ''}
+      ${withEvents && admin && !eventsOn(plan, d).length && !ev.note ? '<span class="add-hint">+ Event / Anmerkung</span>' : ''}
     </div>`;
   };
 
@@ -122,7 +123,7 @@ function render(main) {
         return `<tr class="${K.weekday(d) === 5 ? 'sat' : ''} ${isPublished(plan, d) ? '' : 'draft'}">
         <th class="sticky ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${dayHead(d, false)}</th>
         ${emps.map((e) => (!employed(e, d) ? '<td class="off"></td>' : `<td class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${editAttr(d, e)}>${cell(d, e)}</td>`)).join('')}
-        <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${ev.event ? `<span class="event">🎲 ${esc(ev.event)}</span>` : (admin ? '<span class="add-hint">+ Event</span>' : '')}</td>
+        <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${evHtml(d) || (admin ? '<span class="add-hint">+ Event</span>' : '')}</td>
         <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${ev.note ? esc(ev.note) : (admin ? '<span class="add-hint">+ Anmerkung</span>' : '')}</td>
       </tr>`;
       }).join('')}</tbody>
@@ -363,10 +364,15 @@ act('edit-day', async ({ d }) => {
   const autoHol = K.holidaysAT(K.parseIso(d).y)[d] || '';
   const own = plan.settings.holidays ? plan.settings.holidays[d] : undefined;
   const holName = K.holidayName(d, plan.settings) || '';
+  // wiederkehrende Events, die an diesem Wochentag laufen könnten (auch wenn hier ausgenommen)
+  const recAll = Object.entries(plan.recurring || {}).filter(([, r]) => alive(r) && Number(r.weekday) === K.weekday(d))
+    .map(([id, r]) => ({ id, ...r, on: recurringOn(plan, d).some((x) => x.id === id), skipped: !!(r.skip && r.skip[d]) }))
+    .filter((r) => r.on || r.skipped);
   await openModal({
     title: `${K.WOCHENTAGE_LANG[K.weekday(d)]}, ${K.fmtDate(d, true)}`,
     body: `
       <label class="field"><span>Event im Shop</span><input name="event" value="${esc(day.event || '')}" maxlength="80" placeholder="z. B. MTG Prerelease"></label>
+      ${recAll.length ? `<div class="field"><span>Wiederkehrende Events an diesem Tag</span>${recAll.map((r) => `<label class="check"><input type="checkbox" name="rec_${r.id}" ${r.on ? 'checked' : ''}><span>${esc(r.title)} <small class="muted">(${esc(recurringText(r))})</small></span></label>`).join('')}</div>` : ''}
       <label class="field"><span>Anmerkung</span><input name="note" value="${esc(day.note || '')}" maxlength="120" placeholder="z. B. Mitarbeiterbesprechung"></label>
       <label class="check"><input type="checkbox" name="hol" ${holName ? 'checked' : ''}><span>Feiertag (Shop zu, kein Soll)</span></label>
       <label class="field"><span>Name des Feiertags</span><input name="holName" value="${esc(holName || autoHol)}" maxlength="40"></label>`,
@@ -377,6 +383,13 @@ act('edit-day', async ({ d }) => {
       const t = now();
       App.plan.update((p) => {
         p.days[d] = { event: f.event.trim(), note: f.note.trim(), updatedAt: t };
+        for (const r of recAll) {
+          const want = !!f['rec_' + r.id];
+          if (want === r.on) continue;
+          const skip = { ...(p.recurring[r.id].skip || {}) };
+          if (want) delete skip[d]; else skip[d] = true;
+          p.recurring[r.id] = { ...p.recurring[r.id], skip, updatedAt: t };
+        }
         const hol = { ...(p.settings.holidays || {}) };
         if (f.hol) {
           const name = f.holName.trim() || autoHol || 'Feiertag';

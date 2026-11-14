@@ -214,3 +214,51 @@ export function setEntry(plan, date, empId, rec, t) {
     if (plan.changes[id].from === after) plan.changes[id] = { deleted: true, updatedAt: t };
   }
 }
+
+// ---------- Wiederkehrende Events ----------
+// plan.recurring[id] = { title, weekday 0–6, every: 'week'|'2weeks'|'month', nth: 1–4 | -1 (letzter), from, to, noPrint, skip:{datum:true}, updatedAt }
+
+export const NTH = { 1: '1.', 2: '2.', 3: '3.', 4: '4.', '-1': 'letzten' };
+
+export function recurringMatches(r, date) {
+  if (!alive(r)) return false;
+  if (weekday(date) !== Number(r.weekday)) return false;
+  if (r.from && date < r.from) return false;
+  if (r.to && date > r.to) return false;
+  if (r.skip && r.skip[date]) return false;
+  const { y, m, d } = parseIso(date);
+  if (r.every === '2weeks') {
+    const anchor = r.from || '2026-01-05';
+    const first = dayNum(anchor) + ((Number(r.weekday) - weekday(anchor) + 7) % 7);
+    return ((dayNum(date) - first) / 7) % 2 === 0;
+  }
+  if (r.every === 'month') {
+    const nth = Number(r.nth || 1);
+    if (nth === -1) return d + 7 > new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return Math.ceil(d / 7) === nth;
+  }
+  return true;
+}
+
+export function recurringOn(plan, date) {
+  return Object.entries(plan.recurring || {})
+    .filter(([, r]) => recurringMatches(r, date))
+    .map(([id, r]) => ({ id, ...r }))
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+export function recurringText(r) {
+  const wd = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'][Number(r.weekday)];
+  if (r.every === '2weeks') return `jeden 2. ${wd}`;
+  if (r.every === 'month') return `jeden ${NTH[String(r.nth || 1)]} ${wd} im Monat`;
+  return `jeden ${wd}`;
+}
+
+// Alle Events eines Tages: [{title, recurring, noPrint}]
+export function eventsOn(plan, date) {
+  const out = [];
+  const day = plan.days[date];
+  if (alive(day) && day.event) out.push({ title: day.event, recurring: false, noPrint: false });
+  for (const r of recurringOn(plan, date)) out.push({ title: r.title, recurring: true, noPrint: !!r.noPrint, id: r.id });
+  return out;
+}

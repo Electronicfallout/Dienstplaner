@@ -325,3 +325,6 @@ table.plan td.evcol, table.plan th.evcol { min-width: 150px; font-size: .85rem; 
 .notif-list small { display: block; color: var(--muted); font-weight: 400; }
 .notif-list .grow { flex: 1; min-width: 0; }
 @media print { .notice, .draft-tag, .add-hint { display: none !important; } table.plan tr.draft td { background-image: none; } }
+.event.rec { color: var(--muted); }
+.dayhead .event, td.evcol .event { display: block; }
+@media print { .noprint { display: none !important; } }

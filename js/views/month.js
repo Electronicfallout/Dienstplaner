@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf } from '../app.js';
 import { esc, act, loadScript, toast } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished } from '../model.js';
+import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished, eventsOn } from '../model.js';
 import { cellHtml, editEntry, diffBadge } from './plan.js';
 
 const td = K.parseIso(K.today());
@@ -46,7 +46,7 @@ function render(main) {
             const pe = planEntry(plan, d, e.id);
             return `<td class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${e.id}"` : ''}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
           }).join('')}
-          <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${[hol, day.event && '🎲 ' + day.event, day.note].filter(Boolean).map(esc).join(' · ')}</td>
+          <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${[hol && esc(hol), ...eventsOn(plan, d).map((e) => `<span class="${e.noPrint ? 'noprint' : ''}">${e.recurring ? '↻' : '🎲'} ${esc(e.title)}</span>`), day.note && esc(day.note)].filter(Boolean).join(' · ')}</td>
         </tr>`;
       }).join('')}</tbody>
       <tfoot>
@@ -88,7 +88,7 @@ act('export-xlsx', async () => {
       row.push(r ? (r.type === 'shift' ? `${r.start} - ${r.end}` : r.text) + (r.note && r.type !== 'note' ? ` (${r.note})` : '') : '');
       row.push(r && (r.workH || r.creditH) ? Math.round((r.workH + r.creditH) * 100) / 100 : '');
     }
-    row.push([K.holidayName(d, plan.settings), day.event].filter(Boolean).join(' · '), day.note || '');
+    row.push([K.holidayName(d, plan.settings), ...eventsOn(plan, d).filter((e) => !e.noPrint).map((e) => e.title)].filter(Boolean).join(' · '), day.note || '');
     rows.push(row);
   }
   const st = emps.map((e) => monthStats(plan, e, y, m, timesOf(e.id)));
