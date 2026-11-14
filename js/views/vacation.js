@@ -62,11 +62,12 @@ function render(main) {
   const accTable = `
     <h3>Urlaubskonto heute</h3>
     <div class="table-scroll"><table class="times">
-      <thead><tr><th>Person</th><th>Urlaubsjahr</th><th class="num">Stand heute</th><th class="num">Geplant</th><th class="num">Rest</th><th class="num">Kommt noch dazu</th></tr></thead>
+      <thead><tr><th>Person</th><th>Urlaubsjahr</th><th class="num">Anspruch pro Jahr</th><th class="num">Stand heute</th><th class="num">Geplant</th><th class="num">Rest</th><th class="num">Kommt noch dazu</th></tr></thead>
       <tbody>${acc.map(({ e, v }) => {
         const fmt = (h) => `${K.fmtH(h)} h<small>${v.target ? K.fmtH(v.T(h)) + ' T' : ''}</small>`;
         return `<tr><td class="nowrap"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}${e.startDate ? '' : (admin ? ' <span class="gap" title="Eintrittsdatum fehlt">Eintritt?</span>' : '')}</td>
-          <td class="nowrap">${K.fmtDate(v.ujFrom)}–${K.fmtDate(v.ujTo, true)}<small>${K.fmtH(v.jahrH)} h/Jahr · ${K.fmtH(v.monatH)} h/Monat</small></td>
+          <td class="nowrap">${K.fmtDate(v.ujFrom)}–${K.fmtDate(v.ujTo, true)}<small>+ ${K.fmtH(v.monatH)} h pro Monat</small></td>
+          <td class="num"><b>${v.target ? K.fmtH(v.T(v.jahrH)) + ' Tage' : '–'}</b><small>${K.fmtH(v.jahrH)} h · ${esc(plan.settings.vacationWeeks)} Wochen</small></td>
           <td class="num">${fmt(v.standH)}</td><td class="num">${fmt(v.geplantH)}</td>
           <td class="num"><b class="${v.restH < 0 ? 'neg' : ''}">${fmt(v.restH)}</b></td>
           <td class="num">${fmt(v.nochH)}<small>${v.next ? 'nächste am ' + K.fmtDate(v.next) : ''}</small></td></tr>`;
