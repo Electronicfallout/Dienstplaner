@@ -131,7 +131,7 @@ function render(main) {
         <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${ev.note ? esc(ev.note) : (admin ? '<span class="add-hint">+ Anmerkung</span>' : '')}</td>
       </tr>`;
       }).join('')}</tbody>
-      <tfoot><tr><th class="sticky">Woche</th>${sums.map((s, i) => `<td class="${emps[i].id === meId ? 'me' : ''}"><b>${K.fmtH(s.h + s.credit)}</b> / ${K.fmtH(s.soll)} h${diffBadge(s.h + s.credit - s.soll)}</td>`).join('')}<td colspan="2"></td></tr></tfoot>
+      <tfoot><tr><th class="sticky">Woche</th>${sums.map((s, i) => `<td class="${emps[i].id === meId ? 'me' : ''}">${emps[i].noTimes ? `${K.fmtH(s.h)} h` : `<b>${K.fmtH(s.h + s.credit)}</b> / ${K.fmtH(s.soll)} h${diffBadge(s.h + s.credit - s.soll)}`}</td>`).join('')}<td colspan="2"></td></tr></tfoot>
     </table></div>`;
   } else {
     body = `<div class="day-list">${days.map((d) => `
@@ -142,7 +142,7 @@ function render(main) {
             <span class="what">${cell(d, e)}</span></li>`).join('')}</ul>
       </section>`).join('')}
       <section class="day-card sums"><div class="dayhead"><b>Stunden diese Woche</b></div>
-        <ul>${emps.map((e, i) => `<li class="${e.id === meId ? 'me' : ''}"><span class="who"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</span><span class="what">${K.fmtH(sums[i].h + sums[i].credit)} / ${K.fmtH(sums[i].soll)} h${diffBadge(sums[i].h + sums[i].credit - sums[i].soll)}</span></li>`).join('')}</ul>
+        <ul>${emps.map((e, i) => `<li class="${e.id === meId ? 'me' : ''}"><span class="who"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</span><span class="what">${e.noTimes ? `${K.fmtH(sums[i].h)} h` : `${K.fmtH(sums[i].h + sums[i].credit)} / ${K.fmtH(sums[i].soll)} h${diffBadge(sums[i].h + sums[i].credit - sums[i].soll)}`}</span></li>`).join('')}</ul>
       </section></div>`;
   }
 

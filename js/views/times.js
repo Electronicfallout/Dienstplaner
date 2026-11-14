@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf, empDoc, loadEmployeeVaults } from '../app.js';
 import { esc, act, openModal, toast, formData } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, planEntry, resolve, resolveTime, employed, monthStats, saldoUntil, alive, isPublished } from '../model.js';
+import { tracked, employeesSorted, planEntry, resolve, resolveTime, employed, monthStats, saldoUntil, alive, isPublished } from '../model.js';
 import { now } from '../store.js';
 import { diffBadge } from './plan.js';
 
@@ -14,8 +14,8 @@ App.tEmp = null;
 function currentEmp() {
   const plan = App.plan.obj;
   if (!isAdmin()) return { id: App.cfg.empId, ...plan.employees[App.cfg.empId] };
-  const emps = employeesSorted(plan);
-  if (!App.tEmp || !plan.employees[App.tEmp]) App.tEmp = emps[0] && emps[0].id;
+  const emps = employeesSorted(plan).filter(tracked);
+  if (!App.tEmp || (plan.employees[App.tEmp] || {}).noTimes || !plan.employees[App.tEmp]) App.tEmp = emps[0] && emps[0].id;
   return App.tEmp ? { id: App.tEmp, ...plan.employees[App.tEmp] } : null;
 }
 
@@ -43,7 +43,7 @@ function render(main) {
 
   main.innerHTML = `
     <div class="toolbar">
-      ${admin ? `<label class="select-inline"><span class="sr">Mitarbeiter</span><select data-change="t-emp">${employeesSorted(plan).map((e) => `<option value="${e.id}" ${e.id === emp.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label>` : `<h2 class="h-inline">Meine Zeiten</h2>`}
+      ${admin ? `<label class="select-inline"><span class="sr">Mitarbeiter</span><select data-change="t-emp">${employeesSorted(plan).filter(tracked).map((e) => `<option value="${e.id}" ${e.id === emp.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label>` : `<h2 class="h-inline">Meine Zeiten</h2>`}
       <div class="nav-group">
         <button class="icon-btn" data-act="tmonth" data-d="-1" aria-label="Voriger Monat">‹</button>
         <div class="period"><b>${K.MONATE[m - 1]} ${y}</b></div>

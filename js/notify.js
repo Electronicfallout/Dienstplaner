@@ -17,6 +17,7 @@ export function missingTimes(empId) {
   const times = timesOf(empId);
   if (!times) return null; // nicht lesbar / noch nicht angemeldet
   const emp = { id: empId, ...plan.employees[empId] };
+  if (emp.noTimes) return null;
   const from = plan.settings.saldoFrom || '0000-00-00';
   const mon = K.addDays(K.mondayOf(K.today()), -7);
   const out = [];

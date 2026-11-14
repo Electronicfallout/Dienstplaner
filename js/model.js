@@ -4,6 +4,9 @@ import { STATUS, parseTime, weekday, holidayName, workHours, autoPauseMin, durat
 
 export function alive(r) { return r && !r.deleted; }
 
+// Personen mit Zeiterfassung (ohne Chef/Selbstständige)
+export function tracked(e) { return !e.noTimes; }
+
 export function employeesSorted(plan, includeInactive = false) {
   return Object.entries(plan.employees)
     .filter(([, e]) => alive(e) && (includeInactive || e.active !== false))
@@ -40,7 +43,7 @@ export function isWorkDay(emp, date) {
 }
 
 export function sollDay(emp, date, settings) {
-  if (!employed(emp, date)) return 0;
+  if (!employed(emp, date) || emp.noTimes) return 0;
   if (!isWorkDay(emp, date)) return 0;
   if (holidayName(date, settings)) return 0;
   return dayTarget(emp, settings);

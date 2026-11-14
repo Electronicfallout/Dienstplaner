@@ -51,8 +51,8 @@ function render(main) {
         </tr>`;
       }).join('')}</tbody>
       <tfoot>
-        <tr><th class="sticky">Soll</th>${stats.map((s) => `<td>${K.fmtH(s.soll)} h</td>`).join('')}<td></td></tr>
-        <tr><th class="sticky">Geplant</th>${stats.map((s) => `<td><b>${K.fmtH(s.planH + s.creditH)} h</b>${diffBadge(s.planH + s.creditH - s.soll)}</td>`).join('')}<td></td></tr>
+        <tr><th class="sticky">Soll</th>${stats.map((s, i) => `<td>${emps[i].noTimes ? '–' : K.fmtH(s.soll) + ' h'}</td>`).join('')}<td></td></tr>
+        <tr><th class="sticky">Geplant</th>${stats.map((s, i) => `<td><b>${K.fmtH(s.planH + s.creditH)} h</b>${emps[i].noTimes ? '' : diffBadge(s.planH + s.creditH - s.soll)}</td>`).join('')}<td></td></tr>
         <tr><th class="sticky">Urlaub / Krank</th>${stats.map((s) => `<td>${s.urlaubTage} / ${s.krankTage} T</td>`).join('')}<td></td></tr>
       </tfoot>
     </table></div>

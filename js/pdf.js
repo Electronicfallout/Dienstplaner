@@ -60,7 +60,7 @@ function buildWeek(plan) {
       const r = resolve(plan, planEntry(plan, d, e.id), e, d);
       if (r) h += r.workH + r.creditH;
     }
-    return `${K.fmtH(h)} / ${K.fmtH(soll)}`;
+    return e.noTimes ? `${K.fmtH(h)}` : `${K.fmtH(h)} / ${K.fmtH(soll)}`;
   }), '', ''];
   return {
     title: `Dienstplan KW ${K.isoWeek(mon)} · ${K.fmtDate(mon)}–${K.fmtDate(K.addDays(mon, 6), true)}`,
@@ -86,7 +86,7 @@ function buildMonth(plan) {
   });
   const stats = emps.map((e) => monthStats(plan, e, y, m, null));
   const foot = [
-    ['Soll', ...stats.map((s) => `${K.fmtH(s.soll)} h`), ''],
+    ['Soll', ...stats.map((s, i) => (emps[i].noTimes ? '–' : `${K.fmtH(s.soll)} h`)), ''],
     ['Geplant', ...stats.map((s) => `${K.fmtH(s.planH + s.creditH)} h`), ''],
   ];
   return { title: `Dienstplan ${K.MONATE[m - 1]} ${y}`, file: `Dienstplan_${y}-${K.pad(m)}.pdf`, head, body, foot, nEmp: emps.length };

@@ -27,8 +27,8 @@ function render(main) {
         const state = h ? (h.missing ? 'noch nicht angemeldet' : h.error ? 'nicht lesbar' : 'angemeldet') : '';
         return `<li class="${e.active === false ? 'inactive' : ''}">
           <span class="dot" style="background:${e.color}"></span>
-          <div class="grow"><b>${esc(e.name)}</b><small>${K.fmtH(e.weeklyHours)} h/Woche · Tagessoll ${K.fmtH(dayTarget(e, s))} h${e.workDays && e.workDays.length ? ' (' + e.workDays.map((i) => K.WOCHENTAGE[i]).join(', ') + ')' : ''}${e.startDate ? ' · ab ' + K.fmtDate(e.startDate, true) : ''}${e.endDate ? ' · bis ' + K.fmtDate(e.endDate, true) : ''}${state ? ' · ' + state : ''}</small></div>
-          <button class="btn small" data-act="emp-invite" data-e="${e.id}">Einladen</button>
+          <div class="grow"><b>${esc(e.name)}</b><small>${e.noTimes ? 'ohne Zeiterfassung' : `${K.fmtH(e.weeklyHours)} h/Woche · Tagessoll ${K.fmtH(dayTarget(e, s))} h${e.workDays && e.workDays.length ? ' (' + e.workDays.map((i) => K.WOCHENTAGE[i]).join(', ') + ')' : ''}`}${e.startDate ? ' · ab ' + K.fmtDate(e.startDate, true) : ''}${e.endDate ? ' · bis ' + K.fmtDate(e.endDate, true) : ''}${state ? ' · ' + state : ''}</small></div>
+          ${e.noTimes ? '' : `<button class="btn small" data-act="emp-invite" data-e="${e.id}">Einladen</button>`}
           <button class="btn small ghost" data-act="emp-edit" data-e="${e.id}">Bearbeiten</button>
         </li>`;
       }).join('')}</ul>` : '<p class="muted">Noch niemand angelegt. Du kannst auch die alte Excel-Datei importieren (unten).</p>'}
@@ -123,6 +123,7 @@ act('emp-edit', async ({ e: id }) => {
         <label class="field"><span>Stand Plus-/Minusstunden</span><input type="number" name="zaStartH" step="0.25" value="${esc(e.zaStartH ?? 0)}"></label>
       </div>
       <label class="field"><span>Urlaub ${y}: Korrektur in Stunden (z. B. Resturlaub Vorjahr +, anteilig −)</span><input type="number" name="vacAdj" step="0.5" value="${esc((e.vacationAdjust || {})[y] ?? 0)}"></label>
+      <label class="check"><input type="checkbox" name="noTimes" ${e.noTimes ? 'checked' : ''}><span>Keine Zeiterfassung (z. B. Chef, selbstständig): nur im Plan, ohne Soll, Stunden, Urlaubskonto und Einladung</span></label>
       <label class="check"><input type="checkbox" name="active" ${e.active !== false ? 'checked' : ''}><span>Aktiv (im Plan anzeigen)</span></label>
       ${id ? `<hr><div class="btn-row"><button class="btn small" data-act="emp-reset-pw" data-e="${id}">Passwort zurücksetzen</button><button class="btn small danger" data-act="emp-delete" data-e="${id}">Löschen</button></div>` : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'save' }],
@@ -144,6 +145,7 @@ act('emp-edit', async ({ e: id }) => {
       saldoFrom: r.saldoFrom || null, zaStartH: Number(r.zaStartH) || 0,
       vacationAdjust: { ...(old.vacationAdjust || {}), [y]: Number(r.vacAdj) || 0 },
       workDays: (() => { const w = [0, 1, 2, 3, 4].filter((i) => r['wd' + i]); return w.length && w.length < 5 ? w : null; })(),
+      noTimes: !!r.noTimes,
       active: r.active, order: old.order ?? Object.keys(p.employees).length,
       updatedAt: now(),
     };

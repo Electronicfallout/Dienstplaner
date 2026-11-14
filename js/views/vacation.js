@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, empDoc } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, vacationYear, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay } from '../model.js';
+import { tracked, employeesSorted, vacationYear, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay } from '../model.js';
 import { now } from '../store.js';
 import { randomId } from '../crypto.js';
 
@@ -42,7 +42,7 @@ function render(main) {
   const plan = App.plan.obj;
   const admin = isAdmin();
   const y = App.vyear;
-  const emps = admin ? employeesSorted(plan).filter((e) => !e.endDate || e.endDate >= `${y}-01-01`) : [{ id: App.cfg.empId, ...plan.employees[App.cfg.empId] }];
+  const emps = admin ? employeesSorted(plan).filter(tracked).filter((e) => !e.endDate || e.endDate >= `${y}-01-01`) : [{ id: App.cfg.empId, ...plan.employees[App.cfg.empId] }];
   const acc = emps.map((e) => ({ e, v: vacationYear(plan, e, y) }));
   const reqs = admin ? allRequests() : Object.entries((App.me.doc.obj.requests) || {}).filter(([, r]) => alive(r)).map(([id, r]) => ({ id, emp: emps[0], ...r })).sort((a, b) => (a.from < b.from ? 1 : -1));
   const open = reqs.filter((r) => r.status === 'offen');
