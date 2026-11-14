@@ -284,7 +284,7 @@ export function eventsOn(plan, date) {
   return out;
 }
 
-// Besetzungsprüfung: Mo–Fr braucht es je eine Früh-, Mittel- und Spätschicht
+// Besetzungsprüfung: Mo–Fr je eine Früh- und Mittelschicht, an den Spätdienst-Tagen auch eine Spätschicht
 export function coverageOn(plan) {
   return plan.settings.coverageCheck !== false;
 }
@@ -305,5 +305,7 @@ export function coverageGaps(plan, date) {
     const r = resolve(plan, planEntry(plan, date, e.id), e, date);
     if (r && r.type === 'shift') have.add(shiftSlot(r.start, r.end, plan.settings));
   }
-  return ['Früh', 'Mittel', 'Spät'].filter((x) => !have.has(x));
+  const spaetTage = plan.settings.spaetTage || [2, 3, 4]; // Standard: Mi–Fr
+  const need = spaetTage.includes(weekday(date)) ? ['Früh', 'Mittel', 'Spät'] : ['Früh', 'Mittel'];
+  return need.filter((x) => !have.has(x));
 }
