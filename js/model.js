@@ -1,6 +1,6 @@
 // Abgeleitete Werte: was steht an einem Tag, wie viele Stunden zählen, Soll/Ist, Urlaub.
 
-import { STATUS, parseTime, weekday, holidayName, workHours, autoPauseMin, durationMin, monthDays, parseIso, dayNum, iso, today } from './calc.js';
+import { STATUS, parseTime, weekday, holidayName, workHours, autoPauseMin, durationMin, monthDays, parseIso, dayNum, iso, today, addDays } from './calc.js';
 
 export function alive(r) { return r && !r.deleted; }
 
@@ -182,30 +182,58 @@ export function saldoUntil(plan, emp, untilDate, times) {
   return saldo;
 }
 
-// Urlaubskonto eines Jahres (in Stunden und Tagen)
-export function vacationYear(plan, emp, y) {
+// Datum + k Monate (Tag wird auf das Monatsende gekürzt, z. B. 31.01. + 1 Monat = 28.02.)
+export function addMonths(date, k) {
+  const { y, m, d } = parseIso(date);
+  const t = (y * 12 + (m - 1)) + k;
+  const ny = Math.floor(t / 12), nm = (t % 12) + 1;
+  return iso(ny, nm, Math.min(d, new Date(Date.UTC(ny, nm, 0)).getUTCDate()));
+}
+
+// Urlaubskonto (Urlaubsjahr ab Eintritt): jeden Monat ab dem Eintrittstag wird 1/12 des Jahresurlaubs gutgeschrieben.
+// Stand am Stichtag (emp.vacFrom, sonst Zeitkonto-Start) = emp.vacStartH (Resturlaub in Stunden).
+export function vacationAccount(plan, emp, at = today()) {
   const s = plan.settings;
   const target = dayTarget(emp, s);
-  const anspruchH = (s.vacationWeeks || 5) * (Number(emp.weeklyHours) || 0) + (Number((emp.vacationAdjust || {})[y]) || 0);
-  let verbrauchtH = 0, geplantH = 0, tageVerbraucht = 0, tageGeplant = 0;
-  const heute = today();
-  const tage = [];
-  for (let m = 1; m <= 12; m++) {
-    for (const d of monthDays(y, m)) {
-      const pe = planEntry(plan, d, emp.id);
-      if (!pe || pe.kind !== 'status' || pe.status !== 'Urlaub') continue;
-      const soll = holidayName(d, s) ? 0 : sollDay(emp, d, s); // Urlaub am Feiertag verbraucht keinen Urlaub
-      tage.push(d);
-      if (soll <= 0) continue;
-      const h = (pe.credit !== undefined && pe.credit !== null && pe.credit !== '') ? Number(pe.credit) : soll;
-      if (d <= heute) { verbrauchtH += h; tageVerbraucht++; } else { geplantH += h; tageGeplant++; }
-    }
+  const jahrH = (s.vacationWeeks || 5) * (Number(emp.weeklyHours) || 0);
+  const monatH = jahrH / 12;
+  let from = emp.vacFrom || s.saldoFrom || emp.startDate || `${parseIso(at).y}-01-01`;
+  const anchor = emp.startDate || from;
+  let startH = Number(emp.vacStartH) || 0;
+  if (emp.startDate && emp.startDate > from) { from = emp.startDate; startH = 0; }
+  // Gutschriften: Eintritt + 1, + 2, … Monate, nach dem Stichtag
+  let erworbenH = 0, k = 1, next = null;
+  for (;; k++) {
+    const d = addMonths(anchor, k);
+    if (d <= from) continue;
+    if (d > at) { next = d; break; }
+    erworbenH += monatH;
   }
+  // aktuelles Urlaubsjahr
+  let ujFrom = anchor, n = 0;
+  while (addMonths(anchor, 12 * (n + 1)) <= at) n++;
+  ujFrom = addMonths(anchor, 12 * n);
+  const ujTo = addDays(addMonths(anchor, 12 * (n + 1)), -1);
+  let nochH = 0;
+  for (let d = next; d && d <= ujTo; d = addMonths(anchor, ++k)) nochH += monatH;
+  // genommener und geplanter Urlaub seit dem Stichtag
+  let verbrauchtH = 0, geplantH = 0;
+  const tage = [];
+  for (const [key, pe] of Object.entries(plan.entries)) {
+    if (!alive(pe) || pe.kind !== 'status' || pe.status !== 'Urlaub') continue;
+    const [d, id] = key.split('|');
+    if (id !== emp.id || d < from) continue;
+    const soll = holidayName(d, s) ? 0 : sollDay(emp, d, s); // Urlaub am Feiertag verbraucht keinen Urlaub
+    tage.push(d);
+    if (soll <= 0) continue;
+    const h = (pe.credit !== undefined && pe.credit !== null && pe.credit !== '') ? Number(pe.credit) : soll;
+    if (d <= at) verbrauchtH += h; else geplantH += h;
+  }
+  const standH = startH + erworbenH - verbrauchtH;
+  const T = (h) => (target ? h / target : 0);
   return {
-    anspruchH, verbrauchtH, geplantH, restH: anspruchH - verbrauchtH - geplantH,
-    tageVerbraucht, tageGeplant, anspruchTage: target ? anspruchH / target : 0,
-    restTage: target ? (anspruchH - verbrauchtH - geplantH) / target : 0,
-    tage,
+    from, startH, jahrH, monatH, erworbenH, verbrauchtH, geplantH, standH, restH: standH - geplantH,
+    next, ujFrom, ujTo, nochH, target, T, tage: tage.sort(),
   };
 }
 

@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, empDoc } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { tracked, employeesSorted, vacationYear, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay } from '../model.js';
+import { tracked, employeesSorted, vacationAccount, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay } from '../model.js';
 import { now } from '../store.js';
 import { randomId } from '../crypto.js';
 
@@ -43,7 +43,7 @@ function render(main) {
   const admin = isAdmin();
   const y = App.vyear;
   const emps = admin ? employeesSorted(plan).filter(tracked).filter((e) => !e.endDate || e.endDate >= `${y}-01-01`) : [{ id: App.cfg.empId, ...plan.employees[App.cfg.empId] }];
-  const acc = emps.map((e) => ({ e, v: vacationYear(plan, e, y) }));
+  const acc = emps.map((e) => ({ e, v: vacationAccount(plan, e) }));
   const reqs = admin ? allRequests() : Object.entries((App.me.doc.obj.requests) || {}).filter(([, r]) => alive(r)).map(([id, r]) => ({ id, emp: emps[0], ...r })).sort((a, b) => (a.from < b.from ? 1 : -1));
   const open = reqs.filter((r) => r.status === 'offen');
 
@@ -60,17 +60,19 @@ function render(main) {
     </div>`;
 
   const accTable = `
+    <h3>Urlaubskonto heute</h3>
     <div class="table-scroll"><table class="times">
-      <thead><tr><th>Person</th><th class="num">Anspruch</th><th class="num">Genommen</th><th class="num">Geplant</th><th class="num">Rest</th></tr></thead>
+      <thead><tr><th>Person</th><th>Urlaubsjahr</th><th class="num">Stand heute</th><th class="num">Geplant</th><th class="num">Rest</th><th class="num">Kommt noch dazu</th></tr></thead>
       <tbody>${acc.map(({ e, v }) => {
-        const tg = dayTarget(e, plan.settings);
-        const fmt = (h) => `${K.fmtH(h)} h<small>${tg ? K.fmtH(h / tg) + ' T' : ''}</small>`;
-        return `<tr><td class="nowrap"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</td>
-          <td class="num">${fmt(v.anspruchH)}</td><td class="num">${fmt(v.verbrauchtH)}</td><td class="num">${fmt(v.geplantH)}</td>
-          <td class="num"><b class="${v.restH < 0 ? 'neg' : ''}">${fmt(v.restH)}</b></td></tr>`;
+        const fmt = (h) => `${K.fmtH(h)} h<small>${v.target ? K.fmtH(v.T(h)) + ' T' : ''}</small>`;
+        return `<tr><td class="nowrap"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}${e.startDate ? '' : (admin ? ' <span class="gap" title="Eintrittsdatum fehlt">Eintritt?</span>' : '')}</td>
+          <td class="nowrap">${K.fmtDate(v.ujFrom)}–${K.fmtDate(v.ujTo, true)}<small>${K.fmtH(v.jahrH)} h/Jahr · ${K.fmtH(v.monatH)} h/Monat</small></td>
+          <td class="num">${fmt(v.standH)}</td><td class="num">${fmt(v.geplantH)}</td>
+          <td class="num"><b class="${v.restH < 0 ? 'neg' : ''}">${fmt(v.restH)}</b></td>
+          <td class="num">${fmt(v.nochH)}<small>${v.next ? 'nächste am ' + K.fmtDate(v.next) : ''}</small></td></tr>`;
       }).join('')}</tbody>
     </table></div>
-    <p class="hint">Anspruch: ${esc(plan.settings.vacationWeeks)} Wochen × Wochenstunden. Ein Urlaubstag zählt ein Tagessoll (Wochenstunden ÷ Arbeitstage der Person), Feiertage und Tage, an denen die Person laut Einstellungen nicht arbeitet, zählen nicht (Samstag nur bei fixen Samstagskräften).</p>`;
+    <p class="hint">Pro Jahr ${esc(plan.settings.vacationWeeks)} Wochen × Wochenstunden. Jeden Monat am Tag des Eintritts kommt ein Zwölftel dazu, das Urlaubsjahr beginnt jeweils am Eintrittstag. Stand heute = Resturlaub am Stichtag + bisher erworben − genommen. Rest = Stand heute − schon eingetragener künftiger Urlaub. Ein Urlaubstag zählt ein Tagessoll; Feiertage und freie Tage der Person zählen nicht.${admin ? ' Eintritt, Stichtag und Resturlaub stellst du unter Einstellungen → Mitarbeiter ein.' : ''}</p>`;
 
   const reqList = (list, title) => list.length ? `
     <h3>${title}</h3>
@@ -199,7 +201,7 @@ act('v-approve', async ({ e, r }) => {
       if (pe && pe.kind === 'status' && ['Urlaub', 'ZA', 'Krankenstand'].includes(pe.status)) away.push(`${o.name} ${K.fmtDate(d)}`);
     }
   }
-  const v = vacationYear(plan, { id: e, ...plan.employees[e] }, K.parseIso(req.from).y);
+  const v = vacationAccount(plan, { id: e, ...plan.employees[e] });
   const msg = `${plan.employees[e].name}: ${req.kind || 'Urlaub'} ${K.fmtDate(req.from, true)}–${K.fmtDate(req.to, true)} genehmigen? Rest danach etwa ${K.fmtH(v.restH - days.reduce((a, d) => a + sollDay(plan.employees[e], d, plan.settings), 0))} h.`
     + (away.length ? ` Gleichzeitig weg: ${away.slice(0, 8).join(', ')}${away.length > 8 ? ' …' : ''}` : '');
   if (!(await confirmBox(msg, 'Genehmigen'))) return;

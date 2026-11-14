@@ -115,7 +115,7 @@ act('emp-edit', async ({ e: id }) => {
       <div class="field"><span>Arbeitstage (für Tagessoll, Urlaub und ZA)</span><div class="seg">${[0, 1, 2, 3, 4, 5].map((i) => `<label><input type="checkbox" name="wd${i}" ${(e.workDays && e.workDays.length) ? (e.workDays.includes(i) ? 'checked' : '') : (i < 5 ? 'checked' : '')}><span>${K.WOCHENTAGE[i]}</span></label>`).join('')}</div>
         <small class="muted">Die Wochenstunden werden auf diese Tage verteilt. Bei freier Zeiteinteilung die Tage wählen, an denen sie meistens arbeitet.</small></div>
       <div class="row2">
-        <label class="field"><span>Eintritt (optional)</span><input type="date" name="startDate" value="${esc(e.startDate || '')}"></label>
+        <label class="field"><span>Eintritt (Beginn Urlaubsjahr)</span><input type="date" name="startDate" value="${esc(e.startDate || '')}"></label>
         <label class="field"><span>Austritt (optional)</span><input type="date" name="endDate" value="${esc(e.endDate || '')}"></label>
       </div>
       <h3>Startwerte</h3>
@@ -123,7 +123,11 @@ act('emp-edit', async ({ e: id }) => {
         <label class="field"><span>Zeitkonto zählt ab (leer = wie für alle)</span><input type="date" name="saldoFrom" value="${esc(e.saldoFrom || '')}"></label>
         <label class="field"><span>Stand Plus-/Minusstunden</span><input type="number" name="zaStartH" step="0.25" value="${esc(e.zaStartH ?? 0)}"></label>
       </div>
-      <label class="field"><span>Urlaub ${y}: Korrektur in Stunden (z. B. Resturlaub Vorjahr +, anteilig −)</span><input type="number" name="vacAdj" step="0.5" value="${esc((e.vacationAdjust || {})[y] ?? 0)}"></label>
+      <div class="row2">
+        <label class="field"><span>Urlaubskonto: Stand am</span><input type="date" name="vacFrom" value="${esc(e.vacFrom || '')}" placeholder="wie Zeitkonto"></label>
+        <label class="field"><span>Resturlaub an diesem Tag (Stunden)</span><input type="number" name="vacStartH" step="0.1" value="${esc(e.vacStartH ?? 0)}"></label>
+      </div>
+      <p class="small muted">Ab dem Eintritt kommt jeden Monat am Eintrittstag ein Zwölftel des Jahresurlaubs dazu. Leeres Datum = gleicher Stichtag wie das Zeitkonto. Für neue Mitarbeiter: Eintritt eintragen, Resturlaub 0.</p>
       <label class="check"><input type="checkbox" name="noTimes" ${e.noTimes ? 'checked' : ''}><span>Keine Zeiterfassung (z. B. Chef, selbstständig): nur im Plan, ohne Soll, Stunden, Urlaubskonto und Einladung</span></label>
       <label class="check"><input type="checkbox" name="active" ${e.active !== false ? 'checked' : ''}><span>Aktiv (im Plan anzeigen)</span></label>
       ${id ? `<hr><div class="btn-row"><button class="btn small" data-act="emp-reset-pw" data-e="${id}">Passwort zurücksetzen</button><button class="btn small danger" data-act="emp-delete" data-e="${id}">Löschen</button></div>` : ''}`,
@@ -144,7 +148,7 @@ act('emp-edit', async ({ e: id }) => {
       name: r.name.trim(), weeklyHours: Number(r.weeklyHours) || 0, color: r.color,
       startDate: r.startDate || null, endDate: r.endDate || null,
       saldoFrom: r.saldoFrom || null, zaStartH: Number(r.zaStartH) || 0,
-      vacationAdjust: { ...(old.vacationAdjust || {}), [y]: Number(r.vacAdj) || 0 },
+      vacFrom: r.vacFrom || null, vacStartH: Number(r.vacStartH) || 0,
       workDays: (() => { const w = [0, 1, 2, 3, 4, 5].filter((i) => r['wd' + i]); return w.length && w.join() !== '0,1,2,3,4' ? w : null; })(),
       noTimes: !!r.noTimes,
       active: r.active, order: old.order ?? Object.keys(p.employees).length,
