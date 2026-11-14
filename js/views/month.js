@@ -56,7 +56,7 @@ function render(main) {
         <tr><th class="sticky">Urlaub / Krank</th>${stats.map((s) => `<td>${s.urlaubTage} / ${s.krankTage} T</td>`).join('')}<td></td></tr>
       </tfoot>
     </table></div>
-    <p class="hint">Geplant = Arbeitszeit laut Plan plus angerechnete Stunden für Urlaub, Krankenstand und Ersatzfrei. Die tatsächlich erfassten Zeiten stehen unter „Zeiten“.</p>`;
+    <p class="hint">Geplant = Arbeitszeit laut Plan plus angerechnete Stunden für Urlaub, ZA, Krankenstand und Ersatzfrei (ZA wird dabei vom Zeitkonto abgezogen). Die tatsächlich erfassten Zeiten stehen unter „Zeiten“.</p>`;
 }
 
 act('month', ({ d }) => {

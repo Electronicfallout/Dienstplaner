@@ -7,11 +7,11 @@ export const MONATE = ['Jänner', 'Februar', 'März', 'April', 'Mai', 'Juni', 'J
 // Status, die keine Arbeitszeit sind. credit: wie viele Stunden angerechnet werden.
 //  'tag'  = Tagessoll (Wochenstunden / Arbeitstage pro Woche)
 //  'null' = 0 Stunden
-//  'za'   = 0 Stunden, verbraucht aber Zeitausgleich (Saldo sinkt, weil Soll bleibt)
+//  'za'   = Tagessoll in den Stunden (wie Urlaub), das Zeitkonto sinkt aber um diesen Tag
 export const STATUS = {
   'Frei':         { credit: 'null', farbe: '#9aa3ad', kurz: 'F' },
   'Urlaub':       { credit: 'tag',  farbe: '#2e9d5b', kurz: 'U' },
-  'ZA':           { credit: 'za',   farbe: '#c48a10', kurz: 'ZA' },
+  'ZA':           { credit: 'za',    farbe: '#c48a10', kurz: 'ZA' },
   'Krankenstand': { credit: 'tag',  farbe: '#c0392b', kurz: 'K' },
   'Ersatzfrei':   { credit: 'tag',  farbe: '#7d5bbe', kurz: 'EF' },
   'Feiertag':     { credit: 'null', farbe: '#5b7dbe', kurz: 'FT' },

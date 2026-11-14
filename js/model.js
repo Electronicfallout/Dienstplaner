@@ -96,7 +96,7 @@ export function resolve(plan, entry, emp, date) {
     const def = STATUS[entry.status] || { credit: 'null' };
     let credit = 0;
     if (entry.credit !== undefined && entry.credit !== null && entry.credit !== '') credit = Number(entry.credit);
-    else if (def.credit === 'tag') credit = emp ? sollDay(emp, date, s) : 0;
+    else if (def.credit === 'tag' || def.credit === 'za') credit = emp ? sollDay(emp, date, s) : 0;
     return { type: 'status', status: entry.status, workH: 0, creditH: credit, text: entry.status, note: entry.note };
   }
   if (entry.kind === 'note') {
@@ -137,9 +137,10 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
       if (pr.status === 'Krankenstand' && soll > 0) r.krankTage++;
       if (pr.status === 'ZA') r.zaTage++;
     }
-    r.tage.push({ date: d, pe, pr, tr, soll, ist, credit });
+        const za = pr && pr.type === 'status' && pr.status === 'ZA' ? credit : 0;
+    r.tage.push({ date: d, pe, pr, tr, soll, ist, credit, za });
   }
-  r.saldo = r.istH + r.creditH - r.soll;
+  r.saldo = r.tage.reduce((a, t) => a + t.ist + t.credit - t.za - t.soll, 0);
   return r;
 }
 
@@ -154,7 +155,7 @@ export function saldoUntil(plan, emp, untilDate, times) {
   const end = parseIso(untilDate);
   while (y < end.y || (y === end.y && m <= end.m)) {
     const st = monthStats(plan, emp, y, m, times, untilDate);
-    for (const t of st.tage) if (t.date >= from) saldo += t.ist + t.credit - t.soll;
+    for (const t of st.tage) if (t.date >= from) saldo += t.ist + t.credit - t.za - t.soll; // ZA zählt als Stunden, verbraucht aber das Zeitkonto
     m++; if (m > 12) { m = 1; y++; }
   }
   return saldo;
