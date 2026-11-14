@@ -4,7 +4,7 @@ import { App, registerView, empDoc, loadEmployeeVaults } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox, promptPassword, loadScript, download, pickFile } from '../ui.js';
 import * as K from '../calc.js';
 import * as C from '../crypto.js';
-import { employeesSorted, shiftsSorted, alive, dayTarget, recurringText } from '../model.js';
+import { employeesSorted, shiftsSorted, alive, dayTarget, recurringText, shiftColor, SHIFT_COLORS } from '../model.js';
 import { importIcs } from '../ics.js';
 import { now, COLORS, merge, clone } from '../store.js';
 import { makeInvite, redirectUri } from '../storage.js';
@@ -36,7 +36,7 @@ function render(main) {
 
     <section class="card">
       <div class="card-head"><h2>Schichten</h2><button class="btn small primary" data-act="shift-edit">+ Neu</button></div>
-      <ul class="list">${shifts.map((sh) => `<li><div class="grow"><b>${esc(sh.start)}–${esc(sh.end)}</b><small>${esc(sh.label)} · ${K.fmtH(K.workHours(sh.start, sh.end, s))} h Arbeitszeit</small></div><button class="btn small ghost" data-act="shift-edit" data-id="${sh.id}">Bearbeiten</button></li>`).join('')}</ul>
+      <ul class="list">${shifts.map((sh) => `<li><div class="grow"><b><span class="swatch" style="background:${esc(shiftColor(plan, sh.id, sh.start, sh.end, null) || 'transparent')}"></span>${esc(sh.start)}–${esc(sh.end)}</b><small>${esc(sh.label)} · ${K.fmtH(K.workHours(sh.start, sh.end, s))} h Arbeitszeit</small></div><button class="btn small ghost" data-act="shift-edit" data-id="${sh.id}">Bearbeiten</button></li>`).join('')}</ul>
     </section>
 
     <section class="card">
@@ -210,6 +210,8 @@ act('shift-edit', async ({ id }) => {
   const plan = App.plan.obj;
   const sh = id ? plan.shifts[id] : { label: '', start: '09:00', end: '17:00' };
   const s = plan.settings;
+  const named = Object.entries(SHIFT_COLORS).find(([, [, hex]]) => hex === sh.color);
+  const cm = sh.color === undefined || sh.color === null ? 'auto' : sh.color === '' ? 'none' : named ? named[0] : 'custom';
   const r = await openModal({
     title: id ? 'Schicht bearbeiten' : 'Neue Schicht',
     body: `
@@ -219,11 +221,22 @@ act('shift-edit', async ({ id }) => {
         <label class="field"><span>Ende</span><input type="time" name="end" value="${esc(sh.end)}"></label>
       </div>
       <p class="calc" id="calc"></p>
+      <div class="row2">
+        <label class="field"><span>Farbe</span><select name="colorMode">
+          <option value="auto" ${cm === 'auto' ? 'selected' : ''}>Automatisch</option>
+          ${Object.entries(SHIFT_COLORS).map(([k, [n]]) => `<option value="${k}" ${cm === k ? 'selected' : ''}>${n}</option>`).join('')}
+          <option value="custom" ${cm === 'custom' ? 'selected' : ''}>Eigene Farbe</option>
+          <option value="none" ${cm === 'none' ? 'selected' : ''}>Keine Farbe</option>
+        </select></label>
+        <label class="field" id="cc"><span>Eigene Farbe</span><input type="color" name="customColor" value="${esc(cm === 'custom' ? sh.color : '#cfe3f7')}"></label>
+      </div>
+      <p class="small muted">Automatisch: Samstag gelb, Ende ab 21 Uhr rot, Ende ab 19:30 violett, Beginn bis 9 Uhr grün.</p>
       ${id ? '<hr><button class="btn small danger" data-act="shift-delete" data-id="' + id + '">Schicht löschen</button>' : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'save' }],
     onOpen(root) {
       const upd = () => { const f = formData(root); const h = K.workHours(f.start, f.end, s); root.querySelector('#calc').textContent = h === null ? '' : `${K.fmtH(h)} h Arbeitszeit (inkl. Pausenregel)`; };
-      root.addEventListener('input', upd); upd();
+      const cc = () => { root.querySelector('#cc').style.display = formData(root).colorMode === 'custom' ? '' : 'none'; };
+      root.addEventListener('input', upd); root.addEventListener('change', cc); upd(); cc();
     },
     onAction(v, root) {
       if (!v) return null;
@@ -235,7 +248,8 @@ act('shift-edit', async ({ id }) => {
   if (!r) return;
   App.plan.update((p) => {
     const nid = id || 's' + C.randomId(6);
-    p.shifts[nid] = { label: r.label.trim() || `${r.start}–${r.end}`, start: r.start, end: r.end, order: (p.shifts[nid] && p.shifts[nid].order) ?? Object.keys(p.shifts).length, updatedAt: now() };
+    const color = r.colorMode === 'auto' ? undefined : r.colorMode === 'none' ? '' : r.colorMode === 'custom' ? r.customColor : SHIFT_COLORS[r.colorMode][1];
+    p.shifts[nid] = { label: r.label.trim() || `${r.start}–${r.end}`, start: r.start, end: r.end, ...(color !== undefined ? { color } : {}), order: (p.shifts[nid] && p.shifts[nid].order) ?? Object.keys(p.shifts).length, updatedAt: now() };
   });
 });
 

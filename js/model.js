@@ -1,6 +1,6 @@
 // Abgeleitete Werte: was steht an einem Tag, wie viele Stunden zählen, Soll/Ist, Urlaub.
 
-import { STATUS, weekday, holidayName, workHours, autoPauseMin, durationMin, monthDays, parseIso, dayNum, iso, today } from './calc.js';
+import { STATUS, parseTime, weekday, holidayName, workHours, autoPauseMin, durationMin, monthDays, parseIso, dayNum, iso, today } from './calc.js';
 
 export function alive(r) { return r && !r.deleted; }
 
@@ -58,6 +58,26 @@ export function planEntry(plan, date, empId) {
   return null;
 }
 
+// Schichtfarben: Früh grün, Spät rot, Samstag gelb, langer Spätdienst violett
+export const SHIFT_COLORS = { gruen: ['Grün', '#c6ecc8'], rot: ['Rot', '#f6c3bf'], gelb: ['Gelb', '#fff09a'], violett: ['Violett', '#dccaf3'] };
+
+function autoShiftColor(start, end, date, label) {
+  const s = parseTime(start), e = parseTime(end);
+  if ((date && weekday(date) === 5) || /samstag/i.test(label || '')) return SHIFT_COLORS.gelb[1];
+  if (e !== null && e >= 21 * 60) return SHIFT_COLORS.rot[1];
+  if (e !== null && e >= 19 * 60 + 30) return SHIFT_COLORS.violett[1];
+  if (s !== null && s <= 9 * 60) return SHIFT_COLORS.gruen[1];
+  return '';
+}
+
+// Farbe einer Schicht: eigene Farbe der Vorlage, sonst automatisch nach Uhrzeit/Wochentag
+export function shiftColor(plan, shiftId, start, end, date) {
+  let sh = shiftId && alive(plan.shifts[shiftId]) ? plan.shifts[shiftId] : null;
+  if (!sh) sh = Object.values(plan.shifts).find((x) => alive(x) && x.start === start && x.end === end) || null;
+  if (sh && sh.color !== undefined && sh.color !== null) return sh.color;
+  return autoShiftColor(start, end, date, sh && sh.label);
+}
+
 // Zeiten eines Eintrags auflösen
 export function resolve(plan, entry, emp, date) {
   if (!entry) return null;
@@ -70,7 +90,7 @@ export function resolve(plan, entry, emp, date) {
     }
     const pause = (entry.pause === undefined || entry.pause === null || entry.pause === '') ? autoPauseMin(start, end, s) : Number(entry.pause);
     const h = workHours(start, end, s, entry.pause);
-    return { type: 'shift', start, end, pause, workH: h || 0, creditH: 0, label, text: `${start}–${end}`, note: entry.note };
+    return { type: 'shift', start, end, pause, workH: h || 0, creditH: 0, label, text: `${start}–${end}`, note: entry.note, color: shiftColor(plan, entry.shiftId, start, end, date) };
   }
   if (entry.kind === 'status') {
     const def = STATUS[entry.status] || { credit: 'null' };

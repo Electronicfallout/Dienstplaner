@@ -11,13 +11,18 @@ const clean = (s) => String(s ?? '').replace(/[^\u0000-ɏ–—‘-„€]/g, ''
 
 const STATUS_FILL = { Urlaub: [214, 240, 222], ZA: [250, 236, 204], Krankenstand: [246, 214, 210], Ersatzfrei: [229, 221, 243], Feiertag: [220, 228, 243], Frei: [236, 238, 240] };
 
+function hexRgb(h) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h || '');
+  return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
+}
+
 function cellFor(plan, d, e) {
   if (!employed(e, d)) return { text: '' };
   if (!isAdmin() && !isPublished(plan, d)) return { text: '–' };
   const r = resolve(plan, planEntry(plan, d, e.id), e, d);
   if (!r) return { text: '' };
   const note = r.note && r.type !== 'note' ? `\n${clean(r.note)}` : '';
-  if (r.type === 'shift') return { text: `${r.start}–${r.end}${note}` };
+  if (r.type === 'shift') return { text: `${r.start}–${r.end}${note}`, fill: hexRgb(r.color) };
   if (r.type === 'status') return { text: r.status + note, fill: STATUS_FILL[r.status] };
   return { text: clean(r.text), italic: true };
 }

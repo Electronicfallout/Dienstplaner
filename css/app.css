@@ -193,6 +193,9 @@ td.clickable:hover, li.clickable:hover, tr.clickable:hover td { background: var(
 .dayhead .daynote { font-size: .78rem; color: var(--muted); }
 .cell-shift { display: flex; flex-direction: column; }
 .cell-shift small { color: var(--muted); }
+.cell-shift.colored { color: #1a1a1a; border-radius: 6px; padding: 2px 6px; margin: -2px -4px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.cell-shift.colored small { color: #3a3a3a; }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); vertical-align: -2px; margin-right: 6px; }
 .from-tpl { opacity: .6; }
 .note { display: block; color: var(--muted); font-style: italic; }
 .cell-note { font-style: italic; color: var(--muted); }

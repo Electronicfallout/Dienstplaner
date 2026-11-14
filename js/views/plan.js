@@ -13,7 +13,7 @@ export function cellHtml(r, pe, { compact = false } = {}) {
   if (!r) return '<span class="empty">·</span>';
   const tpl = pe && pe.source !== 'plan' ? ' from-tpl' : '';
   if (r.type === 'shift') {
-    return `<span class="cell-shift${tpl}"><b>${esc(r.start)}–${esc(r.end)}</b>${compact ? '' : `<small>${K.fmtH(r.workH)} h${r.label ? ' · ' + esc(r.label) : ''}</small>`}${r.note ? `<small class="note">${esc(r.note)}</small>` : ''}</span>`;
+    return `<span class="cell-shift${tpl}${r.color ? ' colored' : ''}"${r.color ? ` style="background:${esc(r.color)}"` : ''}><b>${esc(r.start)}–${esc(r.end)}</b>${compact ? '' : `<small>${K.fmtH(r.workH)} h${r.label ? ' · ' + esc(r.label) : ''}</small>`}${r.note ? `<small class="note">${esc(r.note)}</small>` : ''}</span>`;
   }
   if (r.type === 'status') {
     const st = K.STATUS[r.status] || {};
