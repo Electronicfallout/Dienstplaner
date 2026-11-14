@@ -75,6 +75,20 @@ export async function unlockAdmin(privateWrapped, password) {
   return crypto.subtle.importKey('pkcs8', raw, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, ['decrypt']);
 }
 
+// Nicht exportierbare Kopie zum Merken auf dem Gerät
+export async function nonExtractableAdmin(privateKey) {
+  const raw = await crypto.subtle.exportKey('pkcs8', privateKey);
+  return crypto.subtle.importKey('pkcs8', raw, { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['decrypt']);
+}
+
+export async function nonExtractableData(rawKey) {
+  return crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+export function vaultFromKey(file, key) {
+  return { rawKey: null, key, header: headerOf(file) };
+}
+
 export async function rewrapAdmin(privateKey, newPassword) {
   return wrapAdminPrivate(privateKey, newPassword);
 }

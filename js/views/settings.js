@@ -318,9 +318,13 @@ act('to-dropbox', async () => {
 });
 
 act('admin-pw', async () => {
+  const oldPw = await promptPassword('Aktuelles Planer-Passwort', 'Zur Sicherheit zuerst das aktuelle Passwort.', { okLabel: 'Weiter' });
+  if (!oldPw) return;
+  let key;
+  try { key = await C.unlockAdmin(App.plan.obj.admin.privateWrapped, oldPw); } catch { toast('Passwort falsch', 'error'); return; }
   const pw = await promptPassword('Neues Planer-Passwort', 'Das alte Passwort ist dann nicht mehr gültig.', { confirm: true, okLabel: 'Ändern' });
   if (!pw) return;
-  const wrapped = await C.rewrapAdmin(App.adminKey, pw);
+  const wrapped = await C.rewrapAdmin(key, pw);
   App.plan.update((p) => { p.admin = { ...p.admin, privateWrapped: wrapped, updatedAt: now() }; });
   toast('Planer-Passwort geändert');
 });

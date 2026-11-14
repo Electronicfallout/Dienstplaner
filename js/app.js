@@ -5,6 +5,7 @@ import { SyncDoc, PLAN_PATH, empPath, emptyPlan, emptyVaultData, now } from './s
 import * as C from './crypto.js';
 import { esc, $, act, toast, openModal, promptPassword, confirmBox } from './ui.js';
 import { employeesSorted } from './model.js';
+import { getKey, setKey, clearKeys } from './keystore.js';
 
 export const App = {
   cfg: null,
@@ -149,6 +150,7 @@ act('welcome-admin', async () => {
 
 act('forget-device', async () => {
   if (!(await confirmBox('Alle Daten und Zugänge auf diesem Gerät entfernen? Die Daten in der Dropbox bleiben erhalten.', 'Zurücksetzen', true))) return;
+  await clearKeys();
   try {
     Object.keys(localStorage).filter((k) => k.startsWith('dp.')).forEach((k) => localStorage.removeItem(k));
   } catch { }
@@ -156,6 +158,14 @@ act('forget-device', async () => {
 });
 
 // ---------- Planer-Anmeldung ----------
+
+function loginFields(user) {
+  // Benutzername (versteckt) hilft dem Passwort-Manager des Browsers beim Speichern
+  return `<input type="text" name="username" autocomplete="username" value="${esc('Dienstplaner ' + user)}" hidden>
+    <input type="password" name="pw" autocomplete="current-password" aria-label="Passwort" placeholder="Passwort">
+    <label class="check"><input type="checkbox" name="remember" checked><span>Auf diesem Gerät angemeldet bleiben</span></label>
+    <button class="btn primary">Öffnen</button>`;
+}
 
 async function adminLogin() {
   const p = App.plan.obj;
@@ -165,9 +175,14 @@ async function adminLogin() {
       <button class="btn primary" data-act="admin-create">Passwort festlegen</button></div>`);
     return;
   }
+  const remembered = await getKey('admin');
+  if (remembered && remembered.pub === p.admin.publicKey) {
+    App.adminKey = remembered.key;
+    App.remembered = true;
+    return enterApp();
+  }
   screen(`<div class="center-card"><h2>Planer</h2><p>Bitte Planer-Passwort eingeben.</p>
-    <form id="login" class="stack"><input type="password" name="pw" autocomplete="current-password" aria-label="Planer-Passwort" placeholder="Planer-Passwort">
-    <button class="btn primary">Öffnen</button></form>
+    <form id="login" class="stack">${loginFields('Planer')}</form>
     <button class="link" data-act="forget-device">Anderes Konto / Gerät zurücksetzen</button></div>`);
   const f = $('#login');
   f.pw.focus();
@@ -176,6 +191,9 @@ async function adminLogin() {
     try {
       App.adminKey = await C.unlockAdmin(App.plan.obj.admin.privateWrapped, f.pw.value);
     } catch { toast('Passwort falsch', 'error'); f.pw.select(); return; }
+    if (f.remember.checked) {
+      App.remembered = await setKey('admin', { key: await C.nonExtractableAdmin(App.adminKey), pub: App.plan.obj.admin.publicKey });
+    }
     enterApp();
   });
 }
@@ -185,6 +203,7 @@ act('admin-create', async () => {
   if (!pw) return;
   const k = await C.createAdminKeys(pw);
   App.adminKey = k.privateKey;
+  App.remembered = await setKey('admin', { key: await C.nonExtractableAdmin(k.privateKey), pub: k.publicKey });
   App.plan.update((p) => { p.admin = { publicKey: k.publicKey, privateWrapped: k.privateWrapped, updatedAt: now() }; });
   await App.plan.sync();
   enterApp();
@@ -243,17 +262,7 @@ async function employeeLogin() {
       <button class="link" data-act="emp-switch">Ich bin nicht ${esc(emp.name)}</button></div>`);
     return;
   }
-  screen(`<div class="center-card"><h2>${esc(emp.name)}</h2><p>Bitte dein Passwort eingeben.</p>
-    <form id="login" class="stack"><input type="password" name="pw" autocomplete="current-password" aria-label="Passwort" placeholder="Passwort">
-    <button class="btn primary">Öffnen</button></form>
-    <p class="small muted">Passwort vergessen? Der Planer kann es zurücksetzen.</p>
-    <button class="link" data-act="emp-switch">Ich bin nicht ${esc(emp.name)}</button></div>`);
-  const f = $('#login');
-  f.pw.focus();
-  f.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    let vault;
-    try { vault = await C.openVaultWithPassword(file, f.pw.value); } catch { toast('Passwort falsch', 'error'); f.pw.select(); return; }
+  const openWith = async (vault) => {
     const doc = makeEmpDoc(empId, vault, cacheKey);
     let fromCache = false;
     if (cached) { try { fromCache = await doc.loadCache(); } catch { fromCache = false; } }
@@ -262,8 +271,35 @@ async function employeeLogin() {
     doc.on(onDocChange);
     doc.sync();
     enterApp();
+  };
+  const remembered = await getKey('emp:' + empId);
+  if (remembered) {
+    const v = C.vaultFromKey(file, remembered);
+    try { await C.readVault(v, file); App.remembered = true; return openWith(v); } catch { /* Schlüssel passt nicht mehr */ }
+  }
+  screen(`<div class="center-card"><h2>${esc(emp.name)}</h2><p>Bitte dein Passwort eingeben.</p>
+    <form id="login" class="stack">${loginFields(emp.name)}</form>
+    <p class="small muted">Passwort vergessen? Der Planer kann es zurücksetzen.</p>
+    <button class="link" data-act="emp-switch">Ich bin nicht ${esc(emp.name)}</button></div>`);
+  const f = $('#login');
+  f.pw.focus();
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    let vault;
+    try { vault = await C.openVaultWithPassword(file, f.pw.value); } catch { toast('Passwort falsch', 'error'); f.pw.select(); return; }
+    if (f.remember.checked) App.remembered = await setKey('emp:' + empId, await C.nonExtractableData(vault.rawKey));
+    openWith(vault);
   });
 }
+
+act('logout', async () => {
+  const msg = App.remembered
+    ? 'Abmelden? Beim nächsten Öffnen wird wieder das Passwort verlangt.'
+    : 'Abmelden?';
+  if (!(await confirmBox(msg, 'Abmelden'))) return;
+  await clearKeys();
+  location.reload();
+});
 
 act('emp-pick', ({ id }) => {
   App.cfg.empId = id; saveCfg(); employeeLogin();
@@ -277,6 +313,7 @@ act('emp-create', async () => {
   if (!pub) { toast('Der Planer muss zuerst sein Passwort festlegen', 'error'); return; }
   const vault = await C.createVault(pw, pub);
   vault.header.hdrAt = now();
+  App.remembered = await setKey('emp:' + App.cfg.empId, await C.nonExtractableData(vault.rawKey));
   const doc = makeEmpDoc(App.cfg.empId, vault, 'dp.vdoc:' + App.cfg.empId);
   doc.obj = emptyVaultData();
   doc.dirty = true;
@@ -358,6 +395,7 @@ function enterApp() {
       <div class="top-right">
         ${emp ? `<span class="whoami">${esc(emp.name)}</span>` : ''}
         <button class="sync-badge" id="sync" data-act="sync-now" title="Jetzt synchronisieren"></button>
+        <button class="icon-btn small-icon" data-act="logout" title="Abmelden" aria-label="Abmelden">⏻</button>
       </div>
     </header>
     <main id="main" tabindex="-1"></main>`;

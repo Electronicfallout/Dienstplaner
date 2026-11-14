@@ -308,3 +308,4 @@ table.yearview td { width: 12px; min-width: 12px; border-left: 1px solid var(--s
   @page { size: A4 landscape; margin: 10mm; }
 }
 .nowrap { white-space: nowrap; }
+.icon-btn.small-icon { width: 34px; height: 34px; font-size: 1rem; }
