@@ -190,51 +190,46 @@ export function addMonths(date, k) {
   return iso(ny, nm, Math.min(d, new Date(Date.UTC(ny, nm, 0)).getUTCDate()));
 }
 
-// Urlaubskonto (Urlaubsjahr ab Eintritt): jeden Monat ab dem Eintrittstag wird 1/12 des Jahresurlaubs gutgeschrieben.
-// Stand am Stichtag (emp.vacFrom, sonst Zeitkonto-Start) = emp.vacStartH (Resturlaub in Stunden).
+// Urlaubskonto in Tagen (Urlaubsjahr ab Eintritt): Jahresanspruch = Urlaubswochen × Arbeitstage pro Woche (Vollzeit 5 × 5 = 25 Tage).
+// Jeden Monat am Eintrittstag kommt ein Zwölftel dazu. Stand am Stichtag (emp.vacFrom, sonst Zeitkonto-Start) = emp.vacStartT (Resturlaub in Tagen).
+export function workDaysPerWeek(emp, settings) {
+  return Array.isArray(emp.workDays) && emp.workDays.length ? emp.workDays.length : (settings.workdaysPerWeek || 5);
+}
+
 export function vacationAccount(plan, emp, at = today()) {
   const s = plan.settings;
-  const target = dayTarget(emp, s);
-  const jahrH = (s.vacationWeeks || 5) * (Number(emp.weeklyHours) || 0);
-  const monatH = jahrH / 12;
+  const jahrT = (s.vacationWeeks || 5) * workDaysPerWeek(emp, s);
+  const monatT = jahrT / 12;
   let from = emp.vacFrom || s.saldoFrom || emp.startDate || `${parseIso(at).y}-01-01`;
   const anchor = emp.startDate || from;
-  let startH = Number(emp.vacStartH) || 0;
-  if (emp.startDate && emp.startDate > from) { from = emp.startDate; startH = 0; }
-  // Gutschriften: Eintritt + 1, + 2, … Monate, nach dem Stichtag
-  let erworbenH = 0, k = 1, next = null;
+  let startT = Number(emp.vacStartT ?? (emp.vacStartH ? emp.vacStartH / (dayTarget(emp, s) || 1) : 0)) || 0;
+  if (emp.startDate && emp.startDate > from) { from = emp.startDate; startT = 0; }
+  let erworbenT = 0, k = 1, next = null;
   for (;; k++) {
     const d = addMonths(anchor, k);
     if (d <= from) continue;
     if (d > at) { next = d; break; }
-    erworbenH += monatH;
+    erworbenT += monatT;
   }
-  // aktuelles Urlaubsjahr
-  let ujFrom = anchor, n = 0;
+  let n = 0;
   while (addMonths(anchor, 12 * (n + 1)) <= at) n++;
-  ujFrom = addMonths(anchor, 12 * n);
+  const ujFrom = addMonths(anchor, 12 * n);
   const ujTo = addDays(addMonths(anchor, 12 * (n + 1)), -1);
-  let nochH = 0;
-  for (let d = next; d && d <= ujTo; d = addMonths(anchor, ++k)) nochH += monatH;
-  // genommener und geplanter Urlaub seit dem Stichtag
-  let verbrauchtH = 0, geplantH = 0;
+  let nochT = 0;
+  for (let d = next; d && d <= ujTo; d = addMonths(anchor, ++k)) nochT += monatT;
+  // genommene und geplante Urlaubstage seit dem Stichtag (nur Arbeitstage der Person, keine Feiertage)
+  let verbrauchtT = 0, geplantT = 0;
   const tage = [];
   for (const [key, pe] of Object.entries(plan.entries)) {
     if (!alive(pe) || pe.kind !== 'status' || pe.status !== 'Urlaub') continue;
     const [d, id] = key.split('|');
     if (id !== emp.id || d < from) continue;
-    const soll = holidayName(d, s) ? 0 : sollDay(emp, d, s); // Urlaub am Feiertag verbraucht keinen Urlaub
     tage.push(d);
-    if (soll <= 0) continue;
-    const h = (pe.credit !== undefined && pe.credit !== null && pe.credit !== '') ? Number(pe.credit) : soll;
-    if (d <= at) verbrauchtH += h; else geplantH += h;
+    if (holidayName(d, s) || !isWorkDay(emp, d) || !employed(emp, d)) continue;
+    if (d <= at) verbrauchtT++; else geplantT++;
   }
-  const standH = startH + erworbenH - verbrauchtH;
-  const T = (h) => (target ? h / target : 0);
-  return {
-    from, startH, jahrH, monatH, erworbenH, verbrauchtH, geplantH, standH, restH: standH - geplantH,
-    next, ujFrom, ujTo, nochH, target, T, tage: tage.sort(),
-  };
+  const standT = startT + erworbenT - verbrauchtT;
+  return { from, startT, jahrT, monatT, erworbenT, verbrauchtT, geplantT, standT, restT: standT - geplantT, next, ujFrom, ujTo, nochT, tage: tage.sort() };
 }
 
 // Tage, die ein Urlaubsantrag umfasst (ohne Sonntage und Feiertage)

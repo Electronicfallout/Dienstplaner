@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, empDoc } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { tracked, employeesSorted, vacationAccount, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay } from '../model.js';
+import { tracked, employeesSorted, vacationAccount, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay, isWorkDay } from '../model.js';
 import { now } from '../store.js';
 import { randomId } from '../crypto.js';
 
@@ -59,21 +59,19 @@ function render(main) {
       </div>
     </div>`;
 
+  const T = (t) => `${K.fmtH(Math.round(t * 10) / 10)} T`;
   const accTable = `
-    <h3>Urlaubskonto heute</h3>
+    <h3>Urlaubskonto heute (in Tagen)</h3>
     <div class="table-scroll"><table class="times">
       <thead><tr><th>Person</th><th>Urlaubsjahr</th><th class="num">Anspruch pro Jahr</th><th class="num">Stand heute</th><th class="num">Geplant</th><th class="num">Rest</th><th class="num">Kommt noch dazu</th></tr></thead>
-      <tbody>${acc.map(({ e, v }) => {
-        const fmt = (h) => `${K.fmtH(h)} h<small>${v.target ? K.fmtH(v.T(h)) + ' T' : ''}</small>`;
-        return `<tr><td class="nowrap"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}${e.startDate ? '' : (admin ? ' <span class="gap" title="Eintrittsdatum fehlt">Eintritt?</span>' : '')}</td>
-          <td class="nowrap">${K.fmtDate(v.ujFrom)}–${K.fmtDate(v.ujTo, true)}<small>+ ${K.fmtH(v.monatH)} h pro Monat</small></td>
-          <td class="num"><b>${v.target ? K.fmtH(v.T(v.jahrH)) + ' Tage' : '–'}</b><small>${K.fmtH(v.jahrH)} h · ${esc(plan.settings.vacationWeeks)} Wochen</small></td>
-          <td class="num">${fmt(v.standH)}</td><td class="num">${fmt(v.geplantH)}</td>
-          <td class="num"><b class="${v.restH < 0 ? 'neg' : ''}">${fmt(v.restH)}</b></td>
-          <td class="num">${fmt(v.nochH)}<small>${v.next ? 'nächste am ' + K.fmtDate(v.next) : ''}</small></td></tr>`;
-      }).join('')}</tbody>
+      <tbody>${acc.map(({ e, v }) => `<tr><td class="nowrap"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}${e.startDate ? '' : (admin ? ' <span class="gap" title="Eintrittsdatum fehlt">Eintritt?</span>' : '')}</td>
+          <td class="nowrap">${K.fmtDate(v.ujFrom)}–${K.fmtDate(v.ujTo, true)}<small>+ ${K.fmtH(Math.round(v.monatT * 100) / 100)} T pro Monat</small></td>
+          <td class="num"><b>${K.fmtH(v.jahrT)} Tage</b><small>${esc(plan.settings.vacationWeeks)} Wochen</small></td>
+          <td class="num">${T(v.standT)}</td><td class="num">${T(v.geplantT)}</td>
+          <td class="num"><b class="${v.restT < 0 ? 'neg' : ''}">${T(v.restT)}</b></td>
+          <td class="num">${T(v.nochT)}<small>${v.next ? 'nächste am ' + K.fmtDate(v.next) : ''}</small></td></tr>`).join('')}</tbody>
     </table></div>
-    <p class="hint">Pro Jahr ${esc(plan.settings.vacationWeeks)} Wochen × Wochenstunden. Jeden Monat am Tag des Eintritts kommt ein Zwölftel dazu, das Urlaubsjahr beginnt jeweils am Eintrittstag. Stand heute = Resturlaub am Stichtag + bisher erworben − genommen. Rest = Stand heute − schon eingetragener künftiger Urlaub. Ein Urlaubstag zählt ein Tagessoll; Feiertage und freie Tage der Person zählen nicht.${admin ? ' Eintritt, Stichtag und Resturlaub stellst du unter Einstellungen → Mitarbeiter ein.' : ''}</p>`;
+    <p class="hint">Urlaub wird in Tagen gerechnet: ${esc(plan.settings.vacationWeeks)} Wochen × Arbeitstage pro Woche (Vollzeit 25 Tage). Jeden Monat am Tag des Eintritts kommt ein Zwölftel dazu, das Urlaubsjahr beginnt jeweils am Eintrittstag. Stand heute = Resturlaub am Stichtag + bisher erworben − genommen. Rest = Stand heute − schon eingetragener künftiger Urlaub. Feiertage und freie Tage der Person zählen nicht als Urlaubstag. Im Dienstplan und in den Zeiten zählt ein Urlaubstag mit dem Tagessoll (Vollzeit 7,7 h = 7:42).${admin ? ' Eintritt, Stichtag und Resturlaub stellst du unter Einstellungen → Mitarbeiter ein.' : ''}</p>`;
 
   const reqList = (list, title) => list.length ? `
     <h3>${title}</h3>
@@ -202,8 +200,10 @@ act('v-approve', async ({ e, r }) => {
       if (pe && pe.kind === 'status' && ['Urlaub', 'ZA', 'Krankenstand'].includes(pe.status)) away.push(`${o.name} ${K.fmtDate(d)}`);
     }
   }
-  const v = vacationAccount(plan, { id: e, ...plan.employees[e] });
-  const msg = `${plan.employees[e].name}: ${req.kind || 'Urlaub'} ${K.fmtDate(req.from, true)}–${K.fmtDate(req.to, true)} genehmigen? Rest danach etwa ${K.fmtH(v.restH - days.reduce((a, d) => a + sollDay(plan.employees[e], d, plan.settings), 0))} h.`
+  const empE = { id: e, ...plan.employees[e] };
+  const v = vacationAccount(plan, empE);
+  const nT = req.kind === 'ZA' ? 0 : days.filter((d) => !K.holidayName(d, plan.settings) && isWorkDay(empE, d)).length;
+  const msg = `${plan.employees[e].name}: ${req.kind || 'Urlaub'} ${K.fmtDate(req.from, true)}–${K.fmtDate(req.to, true)} genehmigen?${nT ? ` Rest danach ${K.fmtH(Math.round((v.restT - nT) * 10) / 10)} Tage.` : ''}`
     + (away.length ? ` Gleichzeitig weg: ${away.slice(0, 8).join(', ')}${away.length > 8 ? ' …' : ''}` : '');
   if (!(await confirmBox(msg, 'Genehmigen'))) return;
   App.plan.update((p) => writeDays(p, e, days, req.kind || 'Urlaub'));

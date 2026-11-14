@@ -125,9 +125,9 @@ act('emp-edit', async ({ e: id }) => {
       </div>
       <div class="row2">
         <label class="field"><span>Urlaubskonto: Stand am</span><input type="date" name="vacFrom" value="${esc(e.vacFrom || '')}" placeholder="wie Zeitkonto"></label>
-        <label class="field"><span>Resturlaub an diesem Tag (Stunden)</span><input type="number" name="vacStartH" step="0.1" value="${esc(e.vacStartH ?? 0)}"></label>
+        <label class="field"><span>Resturlaub an diesem Tag (Tage)</span><input type="number" name="vacStartT" step="0.5" value="${esc(e.vacStartT ?? 0)}"></label>
       </div>
-      <p class="small muted">Ab dem Eintritt kommt jeden Monat am Eintrittstag ein Zwölftel des Jahresurlaubs dazu. Leeres Datum = gleicher Stichtag wie das Zeitkonto. Für neue Mitarbeiter: Eintritt eintragen, Resturlaub 0.</p>
+      <p class="small muted">Urlaub wird in Tagen gerechnet (Vollzeit 25 Tage pro Jahr). Ab dem Eintritt kommt jeden Monat am Eintrittstag ein Zwölftel dazu. Leeres Datum = gleicher Stichtag wie das Zeitkonto. Für neue Mitarbeiter: Eintritt eintragen, Resturlaub 0.</p>
       <label class="check"><input type="checkbox" name="noTimes" ${e.noTimes ? 'checked' : ''}><span>Keine Zeiterfassung (z. B. Chef, selbstständig): nur im Plan, ohne Soll, Stunden, Urlaubskonto und Einladung</span></label>
       <label class="check"><input type="checkbox" name="active" ${e.active !== false ? 'checked' : ''}><span>Aktiv (im Plan anzeigen)</span></label>
       ${id ? `<hr><div class="btn-row"><button class="btn small" data-act="emp-reset-pw" data-e="${id}">Passwort zurücksetzen</button><button class="btn small danger" data-act="emp-delete" data-e="${id}">Löschen</button></div>` : ''}`,
@@ -148,7 +148,7 @@ act('emp-edit', async ({ e: id }) => {
       name: r.name.trim(), weeklyHours: Number(r.weeklyHours) || 0, color: r.color,
       startDate: r.startDate || null, endDate: r.endDate || null,
       saldoFrom: r.saldoFrom || null, zaStartH: Number(r.zaStartH) || 0,
-      vacFrom: r.vacFrom || null, vacStartH: Number(r.vacStartH) || 0,
+      vacFrom: r.vacFrom || null, vacStartT: Number(r.vacStartT) || 0, vacStartH: null,
       workDays: (() => { const w = [0, 1, 2, 3, 4, 5].filter((i) => r['wd' + i]); return w.length && w.join() !== '0,1,2,3,4' ? w : null; })(),
       noTimes: !!r.noTimes,
       active: r.active, order: old.order ?? Object.keys(p.employees).length,
