@@ -6,6 +6,7 @@ import * as C from './crypto.js';
 import { esc, $, act, toast, openModal, promptPassword, confirmBox } from './ui.js';
 import { employeesSorted } from './model.js';
 import { getKey, setKey, clearKeys } from './keystore.js';
+import { updateBell, maybeShowOnStart, collect } from './notify.js';
 
 export const App = {
   cfg: null,
@@ -371,11 +372,17 @@ function screen(html) {
 }
 
 let rerenderQueued = false;
+let rerenderPending = false;
+document.addEventListener('modal-closed', () => { if (rerenderPending) { rerenderPending = false; rerender(); } });
 function onDocChange() {
   updateSyncBadge();
+  try { updateBell(); } catch (e) { console.warn(e); }
   if (rerenderQueued) return;
   rerenderQueued = true;
-  requestAnimationFrame(() => { rerenderQueued = false; if (!document.body.classList.contains('modal-open')) rerender(); });
+  requestAnimationFrame(() => {
+    rerenderQueued = false;
+    if (document.body.classList.contains('modal-open')) rerenderPending = true; else rerender();
+  });
 }
 
 function navItems() {
@@ -394,6 +401,7 @@ function enterApp() {
       <nav class="tabs" aria-label="Bereiche">${items.map(([k, v]) => `<button class="tab" data-act="nav" data-view="${k}"><span class="ti">${v.icon}</span><span class="tl">${esc(v.title)}</span></button>`).join('')}</nav>
       <div class="top-right">
         ${emp ? `<span class="whoami">${esc(emp.name)}</span>` : ''}
+        <button class="icon-btn small-icon bell" id="bell" data-act="notices" title="Hinweise" aria-label="Hinweise"></button>
         <button class="sync-badge" id="sync" data-act="sync-now" title="Jetzt synchronisieren"></button>
         <button class="icon-btn small-icon" data-act="logout" title="Abmelden" aria-label="Abmelden">⏻</button>
       </div>
@@ -401,8 +409,15 @@ function enterApp() {
     <main id="main" tabindex="-1"></main>`;
   rerender();
   updateSyncBadge();
-  App.plan.sync();
-  if (isAdmin()) loadEmployeeVaults();
+  updateBell();
+  const syncs = [App.plan.sync()];
+  if (App.me) syncs.push(App.me.doc.sync());
+  if (isAdmin()) syncs.push(loadEmployeeVaults());
+  Promise.allSettled(syncs).then(() => {
+    updateBell();
+    maybeShowOnStart();
+    if (isAdmin()) { const c = collect(); if (c.count) toast(`${c.count} Hinweis${c.count > 1 ? 'e' : ''}: oben auf die Glocke tippen`); }
+  });
   startPolling();
 }
 
@@ -457,6 +472,8 @@ function startPolling() {
   clearInterval(pollTimer);
   pollTimer = setInterval(() => { if (document.visibilityState === 'visible') allDocs().forEach((d) => d.sync()); }, 60000);
   document.addEventListener('visibilitychange', () => {
+    // App wird verlassen: ungespeicherte Änderungen sofort übertragen
+    if (document.visibilityState === 'hidden') allDocs().forEach((d) => { if (d.dirty) d.sync(); });
     if (document.visibilityState === 'visible') { allDocs().forEach((d) => d.sync()); if (isAdmin()) loadEmployeeVaults(); }
   });
   window.addEventListener('online', () => allDocs().forEach((d) => d.sync()));

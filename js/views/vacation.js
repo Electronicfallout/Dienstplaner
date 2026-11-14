@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, empDoc } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, vacationYear, requestDays, employed, entryKey, planEntry, alive, dayTarget } from '../model.js';
+import { employeesSorted, vacationYear, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry } from '../model.js';
 import { now } from '../store.js';
 import { randomId } from '../crypto.js';
 
@@ -124,7 +124,7 @@ function writeDays(p, empId, days, status) {
   const emp = p.employees[empId];
   for (const d of days) {
     if (!employed(emp, d)) continue;
-    p.entries[entryKey(d, empId)] = { kind: 'status', status, updatedAt: t };
+    setEntry(p, d, empId, { kind: 'status', status }, t);
   }
 }
 

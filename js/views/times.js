@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf, empDoc, loadEmployeeVaults } from '../app.js';
 import { esc, act, openModal, toast, formData } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, planEntry, resolve, resolveTime, employed, monthStats, saldoUntil, alive } from '../model.js';
+import { employeesSorted, planEntry, resolve, resolveTime, employed, monthStats, saldoUntil, alive, isPublished } from '../model.js';
 import { now } from '../store.js';
 import { diffBadge } from './plan.js';
 
@@ -67,7 +67,7 @@ function render(main) {
       <thead><tr><th>Tag</th><th>Geplant</th><th>Erfasst</th><th class="num">h</th><th class="num">Diff</th></tr></thead>
       <tbody>${st.tage.map((x) => {
         const wd = K.weekday(x.date);
-        const pl = x.pr ? (x.pr.type === 'shift' ? `${esc(x.pr.text)} <small>${K.fmtH(x.pr.workH)} h</small>` : esc(x.pr.text)) : '';
+        const pl = !admin && !isPublished(plan, x.date) ? '<span class="muted">Entwurf</span>' : x.pr ? (x.pr.type === 'shift' ? `${esc(x.pr.text)} <small>${K.fmtH(x.pr.workH)} h</small>` : esc(x.pr.text)) : '';
         const rec = x.tr ? (x.tr.type === 'shift' ? `${esc(x.tr.text)} <small>${x.tr.pause} min Pause</small>` : esc(x.tr.text)) : (x.date <= t && x.pr && x.pr.type === 'shift' ? '<span class="muted">nicht erfasst</span>' : '');
         const note = x.tr && times[x.date] && times[x.date].note ? `<small class="note">${esc(times[x.date].note)}</small>` : '';
         const h = x.ist + x.credit;

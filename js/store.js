@@ -169,7 +169,7 @@ export class SyncDoc {
     this.dirty = true;
     this.saveCache();
     this.emit();
-    this.scheduleSync(800);
+    this.scheduleSync(400);
   }
 
   scheduleSync(ms = 800) {

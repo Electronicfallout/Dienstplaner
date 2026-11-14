@@ -48,7 +48,7 @@ export function openModal({ title, body, buttons = [], onOpen, onAction, wide })
     const root = wrap.querySelector('.modal');
     const close = (v) => {
       wrap.remove();
-      if (!$('.modal-wrap')) document.body.classList.remove('modal-open');
+      if (!$('.modal-wrap')) { document.body.classList.remove('modal-open'); document.dispatchEvent(new Event('modal-closed')); }
       document.removeEventListener('keydown', onKey);
       resolve(v);
     };

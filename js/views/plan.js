@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive } from '../model.js';
+import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive, setEntry, isPublished } from '../model.js';
 import { now } from '../store.js';
 import { LS } from '../storage.js';
 
@@ -50,6 +50,10 @@ function render(main) {
   const layout = LS.get('dp.layout') || (window.innerWidth < 760 ? 'list' : 'table');
   const t = K.today();
 
+  const pubUntil = plan.settings.publishedUntil;
+  const visible = (d) => admin || isPublished(plan, d);
+  const draftDays = days.filter((d) => !isPublished(plan, d));
+
   const toolbar = `
     <div class="toolbar">
       <div class="nav-group">
@@ -61,72 +65,83 @@ function render(main) {
       <div class="nav-group">
         <button class="btn small ghost" data-act="layout" data-l="${layout === 'table' ? 'list' : 'table'}">${layout === 'table' ? 'Liste' : 'Tabelle'}</button>
         ${admin ? '<button class="btn small ghost" data-act="copy-week">Vorwoche übernehmen</button>' : ''}
+        ${admin ? '<button class="btn small primary" data-act="publish">Veröffentlichen</button>' : ''}
         <button class="btn small ghost" data-act="print">Drucken</button>
       </div>
-    </div>`;
+    </div>
+    ${admin && draftDays.length ? `<div class="notice draft">✏️ <b>Entwurf:</b> ${draftDays.length === days.length ? 'Diese Woche ist' : `Ab ${K.fmtDate(draftDays[0])} ist die Woche`} noch nicht veröffentlicht. Die Mitarbeiter sehen sie noch nicht. ${pubUntil ? `Veröffentlicht bis ${K.fmtDate(pubUntil, true)}.` : ''}</div>` : ''}
+    ${admin && !pubUntil ? '<div class="notice">Tipp: Mit <b>Veröffentlichen</b> gibst du den Plan bis zu einem Datum für die Mitarbeiter frei. Spätere Änderungen daran werden dann protokolliert und den Betroffenen angezeigt.</div>' : ''}
+    ${!admin && draftDays.length ? `<div class="notice draft">${draftDays.length === days.length ? 'Diese Woche ist noch nicht veröffentlicht.' : `Ab ${K.fmtDate(draftDays[0])} ist der Plan noch nicht veröffentlicht.`}</div>` : ''}`;
 
   if (!emps.length) {
     main.innerHTML = toolbar + `<div class="empty-state"><p>Noch keine Mitarbeiter.</p>${admin ? '<button class="btn primary" data-act="nav" data-view="settings">Mitarbeiter anlegen</button>' : ''}</div>`;
     return;
   }
 
-  const dayHead = (d) => {
+  const dayInfo = (d) => (alive(plan.days[d]) ? plan.days[d] : {});
+  const dayHead = (d, withEvents) => {
     const hol = K.holidayName(d, plan.settings);
-    const day = plan.days[d];
-    const ev = alive(day) ? day : {};
+    const ev = dayInfo(d);
     return `<div class="dayhead ${d === t ? 'today' : ''}">
       <b>${K.WOCHENTAGE[K.weekday(d)]} ${K.fmtDate(d)}</b>
       ${hol ? `<span class="hol">${esc(hol)}</span>` : ''}
-      ${ev.event ? `<span class="event">🎲 ${esc(ev.event)}</span>` : ''}
-      ${ev.note ? `<span class="daynote">${esc(ev.note)}</span>` : ''}
+      ${!isPublished(plan, d) ? '<span class="draft-tag">Entwurf</span>' : ''}
+      ${withEvents && ev.event ? `<span class="event">🎲 ${esc(ev.event)}</span>` : ''}
+      ${withEvents && ev.note ? `<span class="daynote">📝 ${esc(ev.note)}</span>` : ''}
+      ${withEvents && admin && !ev.event && !ev.note ? '<span class="add-hint">+ Event / Anmerkung</span>' : ''}
     </div>`;
   };
 
-  // Wochensummen
+  // Wochensummen (für Mitarbeiter nur veröffentlichte Tage)
   const sums = emps.map((e) => {
     let h = 0, soll = 0, credit = 0;
     for (let i = 0; i < 7; i++) {
       const d = K.addDays(mon, i);
+      soll += sollDay(e, d, plan.settings);
+      if (!visible(d)) continue;
       const r = resolve(plan, planEntry(plan, d, e.id), e, d);
       if (r) { h += r.workH; credit += r.creditH; }
-      soll += sollDay(e, d, plan.settings);
     }
     return { h, soll, credit };
   });
 
+  const cell = (d, e) => {
+    if (!visible(d)) return '<span class="muted">–</span>';
+    const pe = planEntry(plan, d, e.id);
+    return cellHtml(resolve(plan, pe, e, d), pe);
+  };
+  const editAttr = (d, e) => (admin ? `data-act="edit-entry" data-d="${d}" data-e="${e.id}"` : '');
+  const dayAttr = (d) => (admin ? `data-act="edit-day" data-d="${d}"` : '');
+
   let body;
   if (layout === 'table') {
     body = `<div class="table-scroll"><table class="plan">
-      <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}<small>${K.fmtH(e.weeklyHours)} h</small></th>`).join('')}</tr></thead>
-      <tbody>${days.map((d) => `<tr class="${K.weekday(d) === 5 ? 'sat' : ''}">
-        <th class="sticky ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${dayHead(d)}</th>
-        ${emps.map((e) => {
-          if (!employed(e, d)) return '<td class="off"></td>';
-          const pe = planEntry(plan, d, e.id);
-          const r = resolve(plan, pe, e, d);
-          return `<td class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-entry" data-d="${d}" data-e="${e.id}"` : ''}>${cellHtml(r, pe)}</td>`;
-        }).join('')}
-      </tr>`).join('')}</tbody>
-      <tfoot><tr><th class="sticky">Woche</th>${sums.map((s, i) => `<td class="${emps[i].id === meId ? 'me' : ''}"><b>${K.fmtH(s.h + s.credit)}</b> / ${K.fmtH(s.soll)} h${diffBadge(s.h + s.credit - s.soll)}</td>`).join('')}</tr></tfoot>
+      <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}<small>${K.fmtH(e.weeklyHours)} h</small></th>`).join('')}<th class="evcol">Events im Shop</th><th class="evcol">Anmerkung</th></tr></thead>
+      <tbody>${days.map((d) => {
+        const ev = dayInfo(d);
+        return `<tr class="${K.weekday(d) === 5 ? 'sat' : ''} ${isPublished(plan, d) ? '' : 'draft'}">
+        <th class="sticky ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${dayHead(d, false)}</th>
+        ${emps.map((e) => (!employed(e, d) ? '<td class="off"></td>' : `<td class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${editAttr(d, e)}>${cell(d, e)}</td>`)).join('')}
+        <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${ev.event ? `<span class="event">🎲 ${esc(ev.event)}</span>` : (admin ? '<span class="add-hint">+ Event</span>' : '')}</td>
+        <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${ev.note ? esc(ev.note) : (admin ? '<span class="add-hint">+ Anmerkung</span>' : '')}</td>
+      </tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr><th class="sticky">Woche</th>${sums.map((s, i) => `<td class="${emps[i].id === meId ? 'me' : ''}"><b>${K.fmtH(s.h + s.credit)}</b> / ${K.fmtH(s.soll)} h${diffBadge(s.h + s.credit - s.soll)}</td>`).join('')}<td colspan="2"></td></tr></tfoot>
     </table></div>`;
   } else {
     body = `<div class="day-list">${days.map((d) => `
       <section class="day-card ${d === t ? 'today' : ''}">
-        <div class="${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${dayHead(d)}</div>
-        <ul>${emps.filter((e) => employed(e, d)).map((e) => {
-          const pe = planEntry(plan, d, e.id);
-          const r = resolve(plan, pe, e, d);
-          return `<li class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-entry" data-d="${d}" data-e="${e.id}"` : ''}>
+        <div class="${admin ? 'clickable' : ''}" ${dayAttr(d)}>${dayHead(d, true)}</div>
+        <ul>${emps.filter((e) => employed(e, d)).map((e) => `<li class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${editAttr(d, e)}>
             <span class="who"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</span>
-            <span class="what">${cellHtml(r, pe)}</span></li>`;
-        }).join('')}</ul>
+            <span class="what">${cell(d, e)}</span></li>`).join('')}</ul>
       </section>`).join('')}
       <section class="day-card sums"><div class="dayhead"><b>Stunden diese Woche</b></div>
         <ul>${emps.map((e, i) => `<li class="${e.id === meId ? 'me' : ''}"><span class="who"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</span><span class="what">${K.fmtH(sums[i].h + sums[i].credit)} / ${K.fmtH(sums[i].soll)} h${diffBadge(sums[i].h + sums[i].credit - sums[i].soll)}</span></li>`).join('')}</ul>
       </section></div>`;
   }
 
-  main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen, oder auf einen Tag für Events und Anmerkungen. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '');
+  main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen. Events und Anmerkungen trägst du in den rechten Spalten bzw. beim Tag ein. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '');
 }
 
 export function diffBadge(d) {
@@ -141,7 +156,67 @@ act('week', ({ d }) => {
 
 act('layout', ({ l }) => { LS.set('dp.layout', l); render(document.getElementById('main')); });
 
-act('print', () => window.print());
+act('print', () => printDialog());
+
+// ---------- Drucken (Hoch- oder Querformat) ----------
+
+export async function printDialog() {
+  const cur = LS.get('dp.print') || 'landscape';
+  const r = await openModal({
+    title: 'Drucken',
+    body: `<div class="seg"><label><input type="radio" name="o" value="landscape" ${cur === 'landscape' ? 'checked' : ''}><span>Querformat</span></label><label><input type="radio" name="o" value="portrait" ${cur === 'portrait' ? 'checked' : ''}><span>Hochformat</span></label></div>
+      <p class="small muted">Gedruckt wird die aktuelle Ansicht. Tipp: In der Tabellenansicht passt eine Woche gut auf eine Seite im Querformat.</p>`,
+    buttons: [{ label: 'Abbrechen', value: null }, { label: 'Drucken', kind: 'primary', value: 'ok' }],
+    onAction(v, root) { return v ? formData(root).o : null; },
+  });
+  if (!r) return;
+  LS.set('dp.print', r);
+  let st = document.getElementById('page-style');
+  if (!st) { st = document.createElement('style'); st.id = 'page-style'; document.head.appendChild(st); }
+  st.textContent = `@page { size: A4 ${r}; margin: 10mm; }`;
+  // Liste druckt schlecht quer; für den Druck kurz auf Tabelle umschalten
+  const prevLayout = LS.get('dp.layout');
+  if (App.view === 'plan' && (prevLayout || (window.innerWidth < 760 ? 'list' : 'table')) === 'list') {
+    LS.set('dp.layout', 'table'); render(document.getElementById('main'));
+    setTimeout(() => { window.print(); if (prevLayout) LS.set('dp.layout', prevLayout); else LS.del('dp.layout'); render(document.getElementById('main')); }, 100);
+  } else setTimeout(() => window.print(), 100);
+}
+
+// ---------- Veröffentlichen ----------
+
+act('publish', async () => {
+  const plan = App.plan.obj;
+  const cur = plan.settings.publishedUntil;
+  const sun = K.addDays(App.week, 6);
+  const { y, m } = K.parseIso(sun);
+  const monthEnd = K.iso(y, m, K.daysInMonth(y, m));
+  const r = await openModal({
+    title: 'Plan veröffentlichen',
+    body: `<p>Bis zu welchem Tag ist der Plan fertig? Alles bis dahin sehen die Mitarbeiter. Ändert sich danach etwas, steht es in der Änderungsliste und die betroffene Person bekommt einen Hinweis.</p>
+      <div class="seg">
+        <label><input type="radio" name="opt" value="${sun}" checked><span>bis ${K.fmtDate(sun, true)} (diese Woche)</span></label>
+        <label><input type="radio" name="opt" value="${monthEnd}"><span>bis ${K.fmtDate(monthEnd, true)} (Monatsende)</span></label>
+        <label><input type="radio" name="opt" value="custom"><span>anderes Datum</span></label>
+      </div>
+      <label class="field"><span>Datum</span><input type="date" name="date" value="${sun}"></label>
+      ${cur ? `<p class="small muted">Bisher veröffentlicht bis ${K.fmtDate(cur, true)}.</p>` : ''}`,
+    buttons: [{ label: 'Abbrechen', value: null }, { label: 'Veröffentlichen', kind: 'primary', value: 'ok' }],
+    onOpen(root) {
+      root.addEventListener('change', (e) => { if (e.target.name === 'opt' && e.target.value !== 'custom') root.querySelector('[name=date]').value = e.target.value; });
+      root.querySelector('[name=date]').addEventListener('input', () => { root.querySelector('[value=custom]').checked = true; });
+    },
+    onAction(v, root) {
+      if (!v) return null;
+      const d = formData(root).date;
+      if (!d) { toast('Datum wählen', 'error'); return false; }
+      return d;
+    },
+  });
+  if (!r) return;
+  if (cur && r < cur && !(await confirmBox(`Der Plan war schon bis ${K.fmtDate(cur, true)} veröffentlicht. Wirklich auf ${K.fmtDate(r, true)} zurücknehmen?`, 'Zurücknehmen'))) return;
+  App.plan.update((p) => { p.settings = { ...p.settings, publishedUntil: r, publishedAt: now(), updatedAt: now() }; });
+  toast(`Veröffentlicht bis ${K.fmtDate(r, true)}`);
+});
 
 act('copy-week', async () => {
   const plan = App.plan.obj;
@@ -159,9 +234,9 @@ act('copy-week', async () => {
         const k = entryKey(d, e.id);
         if (alive(src) && !(src.kind === 'status' && ['Urlaub', 'Krankenstand', 'ZA'].includes(src.status))) {
           const { updatedAt, ...rest } = src;
-          p.entries[k] = { ...rest, updatedAt: t };
+          setEntry(p, d, e.id, rest, t);
         } else if (alive(p.entries[k])) {
-          p.entries[k] = { deleted: true, updatedAt: t };
+          setEntry(p, d, e.id, null, t);
         }
       }
     }
@@ -247,7 +322,7 @@ export async function editEntry(date, empId) {
       const k = entryKey(date, empId);
       const t = now();
       if (v === 'clear') {
-        App.plan.update((p) => { p.entries[k] = { deleted: true, updatedAt: t }; });
+        App.plan.update((p) => setEntry(p, date, empId, null, t));
         return 'ok';
       }
       let rec;
@@ -267,8 +342,7 @@ export async function editEntry(date, empId) {
         rec = { kind: 'note' };
       }
       if (f.note.trim()) rec.note = f.note.trim();
-      rec.updatedAt = t;
-      App.plan.update((p) => { p.entries[k] = rec; });
+      App.plan.update((p) => setEntry(p, date, empId, rec, t));
       return 'ok';
     },
   });

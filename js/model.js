@@ -181,3 +181,36 @@ export function requestDays(plan, from, to) {
 }
 
 export { durationMin };
+
+// ---------- Veröffentlichung und Änderungsprotokoll ----------
+
+export function isPublished(plan, date) {
+  const pu = plan.settings.publishedUntil;
+  return !pu || date <= pu;
+}
+
+export function entryText(plan, date, empId) {
+  const emp = plan.employees[empId];
+  const r = resolve(plan, planEntry(plan, date, empId), emp ? { id: empId, ...emp } : null, date);
+  if (!r) return 'kein Dienst';
+  if (r.type === 'shift') return `${r.start}–${r.end}`;
+  if (r.type === 'status') return r.status;
+  return r.text || 'Notiz';
+}
+
+// Eintrag setzen (rec = null löscht). Protokolliert Änderungen an bereits veröffentlichten Tagen.
+export function setEntry(plan, date, empId, rec, t) {
+  const k = entryKey(date, empId);
+  const before = entryText(plan, date, empId);
+  plan.entries[k] = rec ? { ...rec, updatedAt: t } : { deleted: true, updatedAt: t };
+  const after = entryText(plan, date, empId);
+  const pu = plan.settings.publishedUntil;
+  if (pu && date <= pu && before !== after) {
+    plan.changes = plan.changes || {};
+    // mehrere Änderungen am selben Tag/Person innerhalb kurzer Zeit zusammenfassen
+    const id = `${date}|${empId}|${Math.floor(t / 600000)}`;
+    const prev = plan.changes[id];
+    plan.changes[id] = { date, empId, from: prev ? prev.from : before, to: after, at: t, updatedAt: t };
+    if (plan.changes[id].from === after) plan.changes[id] = { deleted: true, updatedAt: t };
+  }
+}

@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf } from '../app.js';
 import { esc, act, loadScript, toast } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, planEntry, resolve, employed, monthStats, alive } from '../model.js';
+import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished } from '../model.js';
 import { cellHtml, editEntry, diffBadge } from './plan.js';
 
 const td = K.parseIso(K.today());
@@ -38,14 +38,15 @@ function render(main) {
         const wd = K.weekday(d);
         const hol = K.holidayName(d, plan.settings);
         const day = alive(plan.days[d]) ? plan.days[d] : {};
-        return `<tr class="${wd === 6 ? 'sun' : ''} ${wd === 5 ? 'sat' : ''} ${hol ? 'holiday' : ''} ${d === t ? 'today' : ''}">
-          <th class="sticky"><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(d)}</th>
+        return `<tr class="${isPublished(plan, d) ? '' : 'draft'} ${wd === 6 ? 'sun' : ''} ${wd === 5 ? 'sat' : ''} ${hol ? 'holiday' : ''} ${d === t ? 'today' : ''}">
+          <th class="sticky"><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(d)}${isPublished(plan, d) ? '' : ' <span class="draft-tag">Entwurf</span>'}</th>
           ${emps.map((e) => {
             if (!employed(e, d)) return '<td class="off"></td>';
+            if (!admin && !isPublished(plan, d)) return '<td class="muted">–</td>';
             const pe = planEntry(plan, d, e.id);
             return `<td class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${e.id}"` : ''}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
           }).join('')}
-          <td class="ev">${[hol, day.event && '🎲 ' + day.event, day.note].filter(Boolean).map(esc).join(' · ')}</td>
+          <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${[hol, day.event && '🎲 ' + day.event, day.note].filter(Boolean).map(esc).join(' · ')}</td>
         </tr>`;
       }).join('')}</tbody>
       <tfoot>
