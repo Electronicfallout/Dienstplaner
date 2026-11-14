@@ -6,6 +6,7 @@ import { esc, act, openModal } from './ui.js';
 import * as K from './calc.js';
 import { employeesSorted, planEntry, resolve, alive, isPublished, employed } from './model.js';
 import { LS } from './storage.js';
+import { proposalNotices } from './proposals.js';
 
 const seenKey = () => `dp.seen:${App.cfg.role}:${App.cfg.empId || ''}`;
 export const getSeen = () => Number(LS.get(seenKey()) || 0);
@@ -72,6 +73,9 @@ export function collect() {
     const m = missingTimes(me);
     if (m && m.days.length) todo.push({ icon: '⏱️', text: `Bitte trag deine Stunden für KW ${m.week} ein`, sub: m.days.map((d) => `${K.WOCHENTAGE[K.weekday(d)]} ${K.fmtDate(d)}`).join(', '), view: 'times' });
   }
+  const pn = proposalNotices(plan);
+  todo.push(...pn.todo);
+  news.push(...pn.news);
   news.sort((a, b) => b.at - a.at);
   const seen = getSeen();
   const unread = news.filter((n) => n.at > seen).length;

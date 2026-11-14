@@ -5,6 +5,7 @@ import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
 import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive, setEntry, isPublished, eventsOn, recurringOn, recurringText, coverageGaps } from '../model.js';
 import { now } from '../store.js';
+import { proposalsHtml } from '../proposals.js';
 import { LS } from '../storage.js';
 
 App.week = K.mondayOf(K.today());
@@ -72,6 +73,7 @@ function render(main) {
     </div>
     ${admin && draftDays.length ? `<div class="notice draft">✏️ <b>Entwurf:</b> ${draftDays.length === days.length ? 'Diese Woche ist' : `Ab ${K.fmtDate(draftDays[0])} ist die Woche`} noch nicht veröffentlicht. Die Mitarbeiter sehen sie noch nicht. ${pubUntil ? `Veröffentlicht bis ${K.fmtDate(pubUntil, true)}.` : ''}</div>` : ''}
     ${admin && days.some((d) => coverageGaps(plan, d).length) ? `<div class="notice warn">⚠ <b>Besetzung:</b> ${days.filter((d) => coverageGaps(plan, d).length).map((d) => `${K.WOCHENTAGE[K.weekday(d)]} fehlt ${coverageGaps(plan, d).join(', ')}`).join(' · ')}</div>` : ''}
+    ${proposalsHtml(plan)}
     ${admin && !pubUntil ? '<div class="notice">Tipp: Mit <b>Veröffentlichen</b> gibst du den Plan bis zu einem Datum für die Mitarbeiter frei. Spätere Änderungen daran werden dann protokolliert und den Betroffenen angezeigt.</div>' : ''}
     ${!admin && draftDays.length ? `<div class="notice draft">${draftDays.length === days.length ? 'Diese Woche ist noch nicht veröffentlicht.' : `Ab ${K.fmtDate(draftDays[0])} ist der Plan noch nicht veröffentlicht.`}</div>` : ''}`;
 
@@ -115,7 +117,8 @@ function render(main) {
     const pe = planEntry(plan, d, e.id);
     return cellHtml(resolve(plan, pe, e, d), pe);
   };
-  const editAttr = (d, e) => (admin ? `data-act="edit-entry" data-d="${d}" data-e="${e.id}"` : '');
+  const editAttr = (d, e) => (admin ? `data-act="edit-entry" data-d="${d}" data-e="${e.id}"` : (e.id === meId && isPublished(plan, d) && d >= t ? `data-act="propose" data-d="${d}"` : ''));
+  const canEdit = (d, e) => admin || (e.id === meId && isPublished(plan, d) && d >= t);
   const dayAttr = (d) => (admin ? `data-act="edit-day" data-d="${d}"` : '');
 
   let body;
@@ -126,7 +129,7 @@ function render(main) {
         const ev = dayInfo(d);
         return `<tr class="${K.weekday(d) === 5 ? 'sat' : ''} ${isPublished(plan, d) ? '' : 'draft'}">
         <th class="sticky ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${dayHead(d, false)}</th>
-        ${emps.map((e) => (!employed(e, d) ? '<td class="off"></td>' : `<td class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${editAttr(d, e)}>${cell(d, e)}</td>`)).join('')}
+        ${emps.map((e) => (!employed(e, d) ? '<td class="off"></td>' : `<td class="${e.id === meId ? 'me' : ''} ${canEdit(d, e) ? 'clickable' : ''}" ${editAttr(d, e)}>${cell(d, e)}</td>`)).join('')}
         <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${evHtml(d) || (admin ? '<span class="add-hint">+ Event</span>' : '')}</td>
         <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${ev.note ? esc(ev.note) : (admin ? '<span class="add-hint">+ Anmerkung</span>' : '')}</td>
       </tr>`;
@@ -137,7 +140,7 @@ function render(main) {
     body = `<div class="day-list">${days.map((d) => `
       <section class="day-card ${d === t ? 'today' : ''}">
         <div class="${admin ? 'clickable' : ''}" ${dayAttr(d)}>${dayHead(d, true)}</div>
-        <ul>${emps.filter((e) => employed(e, d)).map((e) => `<li class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${editAttr(d, e)}>
+        <ul>${emps.filter((e) => employed(e, d)).map((e) => `<li class="${e.id === meId ? 'me' : ''} ${canEdit(d, e) ? 'clickable' : ''}" ${editAttr(d, e)}>
             <span class="who"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</span>
             <span class="what">${cell(d, e)}</span></li>`).join('')}</ul>
       </section>`).join('')}
@@ -146,7 +149,7 @@ function render(main) {
       </section></div>`;
   }
 
-  main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen. Events und Anmerkungen trägst du in den rechten Spalten bzw. beim Tag ein. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '');
+  main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen. Events und Anmerkungen trägst du in den rechten Spalten bzw. beim Tag ein. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '<p class="hint">Tippe auf deinen Dienst, um mit jemandem zu tauschen oder eine andere Zeit vorzuschlagen.</p>');
 }
 
 export function diffBadge(d) {
@@ -243,7 +246,7 @@ act('publish', async () => {
         <label><input type="radio" name="opt" value="custom"><span>anderes Datum</span></label>
       </div>
       <label class="field"><span>Datum</span><input type="date" name="date" value="${sun}"></label>
-      ${(() => { const g = [0, 1, 2, 3, 4].map((i) => K.addDays(App.week, i)).filter((d) => coverageGaps(plan, d).length); return g.length ? `<p class="notice warn">⚠ Diese Woche ist nicht jeden Tag voll besetzt: ${g.map((d) => `${K.WOCHENTAGE[K.weekday(d)]} fehlt ${coverageGaps(plan, d).join(', ')}`).join(' · ')}</p>` : ''; })()}
+      ${(() => { const g = [0, 1, 2, 3, 4, 5].map((i) => K.addDays(App.week, i)).filter((d) => coverageGaps(plan, d).length); return g.length ? `<p class="notice warn">⚠ Diese Woche ist nicht jeden Tag voll besetzt: ${g.map((d) => `${K.WOCHENTAGE[K.weekday(d)]} fehlt ${coverageGaps(plan, d).join(', ')}`).join(' · ')}</p>` : ''; })()}
       ${cur ? `<p class="small muted">Bisher veröffentlicht bis ${K.fmtDate(cur, true)}.</p>` : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Veröffentlichen', kind: 'primary', value: 'ok' }],
     onOpen(root) {

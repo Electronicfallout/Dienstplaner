@@ -4,7 +4,7 @@ import { App, registerView, empDoc, loadEmployeeVaults } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox, promptPassword, loadScript, download, pickFile } from '../ui.js';
 import * as K from '../calc.js';
 import * as C from '../crypto.js';
-import { employeesSorted, shiftsSorted, alive, dayTarget, recurringText, shiftColor, SHIFT_COLORS } from '../model.js';
+import { employeesSorted, shiftsSorted, alive, dayTarget, recurringText, shiftColor, SHIFT_COLORS, DEFAULT_OPEN } from '../model.js';
 import { importIcs } from '../ics.js';
 import { now, COLORS, merge, clone } from '../store.js';
 import { makeInvite, redirectUri } from '../storage.js';
@@ -67,10 +67,11 @@ function render(main) {
         <label class="field"><span>Frühschicht = Beginn bis</span><input type="time" name="fruehBis" value="${esc(s.fruehBis || '09:00')}"></label>
         <label class="field"><span>Spätschicht = Ende ab</span><input type="time" name="spaetAb" value="${esc(s.spaetAb || '21:00')}"></label>
         <label class="check"><input type="checkbox" name="coverageCheck" ${s.coverageCheck !== false ? 'checked' : ''}><span>Mo–Fr prüfen, ob Früh, Mittel und Spät besetzt sind</span></label>
+        <div class="field wide"><span>Öffnungszeiten (leer = geschlossen)</span><div class="open-grid">${[0, 1, 2, 3, 4, 5, 6].map((i) => { const o = (s.openHours || DEFAULT_OPEN)[i] || ['', '']; return `<label><b>${K.WOCHENTAGE[i]}</b><input type="time" name="oa${i}" value="${esc(o[0] || '')}"><input type="time" name="ob${i}" value="${esc(o[1] || '')}"></label>`; }).join('')}</div></div>
         <div class="field"><span>Spätdienst nötig an</span><div class="seg">${[0, 1, 2, 3, 4].map((i) => `<label><input type="checkbox" name="spaet${i}" ${(s.spaetTage || [2, 3, 4]).includes(i) ? 'checked' : ''}><span>${K.WOCHENTAGE[i]}</span></label>`).join('')}</div></div>
         <div class="field"><span>&nbsp;</span><button class="btn primary" data-act="rules-save">Regeln speichern</button></div>
       </form>
-      <p class="small muted">Ein Dienst, der länger als ${esc(s.pauseAfterH)} Stunden dauert, bekommt automatisch ${esc(s.pauseMin)} Minuten Pause abgezogen. Feiertage (Österreich) sind automatisch eingetragen; im Plan auf einen Tag tippen, um das zu ändern. Besetzung: Alles zwischen Früh- und Spätschicht zählt als Mittelschicht. Feiertage werden nicht geprüft.</p>
+      <p class="small muted">Ein Dienst, der länger als ${esc(s.pauseAfterH)} Stunden dauert, bekommt automatisch ${esc(s.pauseMin)} Minuten Pause abgezogen. Feiertage (Österreich) sind automatisch eingetragen; im Plan auf einen Tag tippen, um das zu ändern. Besetzung: Alles zwischen Früh- und Spätschicht zählt als Mittelschicht. Während der Öffnungszeiten muss immer jemand eingeteilt sein. Feiertage werden nicht geprüft.</p>
     </section>
 
     <section class="card">
@@ -306,7 +307,8 @@ act('rules-save', () => {
     p.settings = {
       ...p.settings, firma: f.firma.trim(), pauseAfterH: Number(f.pauseAfterH), pauseMin: Number(f.pauseMin),
       vacationWeeks: Number(f.vacationWeeks), workdaysPerWeek: Number(f.workdaysPerWeek) || 5, saldoFrom: f.saldoFrom || null,
-      fruehBis: f.fruehBis || '09:00', spaetAb: f.spaetAb || '21:00', coverageCheck: !!f.coverageCheck, spaetTage: [0, 1, 2, 3, 4].filter((i) => f['spaet' + i]), updatedAt: now(),
+      fruehBis: f.fruehBis || '09:00', spaetAb: f.spaetAb || '21:00', coverageCheck: !!f.coverageCheck, spaetTage: [0, 1, 2, 3, 4].filter((i) => f['spaet' + i]),
+      openHours: [0, 1, 2, 3, 4, 5, 6].map((i) => (f['oa' + i] && f['ob' + i] ? [f['oa' + i], f['ob' + i]] : null)), updatedAt: now(),
     };
   });
   document.querySelector('.brand span').textContent = f.firma.trim() || 'Dienstplaner';

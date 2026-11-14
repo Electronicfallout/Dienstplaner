@@ -40,7 +40,7 @@ function render(main) {
         const hol = K.holidayName(d, plan.settings);
         const day = alive(plan.days[d]) ? plan.days[d] : {};
         return `<tr class="${isPublished(plan, d) ? '' : 'draft'} ${wd === 6 ? 'sun' : ''} ${wd === 5 ? 'sat' : ''} ${hol ? 'holiday' : ''} ${d === t ? 'today' : ''}">
-          <th class="sticky"><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(d)}${isPublished(plan, d) ? '' : ' <span class="draft-tag">Entwurf</span>'}${admin && coverageGaps(plan, d).length ? ` <span class="gap" title="fehlt: ${coverageGaps(plan, d).join(', ')}">⚠ ${coverageGaps(plan, d).map((x) => x[0]).join('')}</span>` : ''}</th>
+          <th class="sticky"><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(d)}${isPublished(plan, d) ? '' : ' <span class="draft-tag">Entwurf</span>'}${admin && coverageGaps(plan, d).length ? ` <span class="gap" title="fehlt: ${coverageGaps(plan, d).join(', ')}">⚠ ${coverageGaps(plan, d).map((x) => (x.includes(':') ? '⏰' : x[0])).join('')}</span>` : ''}</th>
           ${emps.map((e) => {
             if (!employed(e, d)) return '<td class="off"></td>';
             if (!admin && !isPublished(plan, d)) return '<td class="muted">–</td>';

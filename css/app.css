@@ -239,6 +239,15 @@ table.times tfoot td { background: var(--surface-2); font-weight: 600; }
 .quick span { flex: 1 1 200px; }
 .notice { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
 .notice.warn { background: var(--warn-bg); color: var(--warn); }
+.field.wide { grid-column: 1 / -1; }
+.notice.proposals { background: var(--surface); border: 1px solid var(--line); }
+.prop-list { list-style: none; margin: 6px 0 0; padding: 0; }
+.prop-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.prop-list small { display: block; color: var(--muted); }
+.warn-text { color: var(--warn) !important; }
+.open-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; }
+.open-grid label { display: grid; grid-template-columns: 2.2em 1fr 1fr; gap: 4px; align-items: center; }
+.open-grid input { min-width: 0; padding: 6px 4px; }
 .gap { display: inline-block; font-size: .75rem; font-weight: 600; color: var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 1px 6px; }
 .empty-state { text-align: center; padding: 40px 16px; color: var(--muted); }
 

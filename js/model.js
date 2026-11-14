@@ -295,7 +295,8 @@ export function eventsOn(plan, date) {
   return out;
 }
 
-// Besetzungsprüfung: Mo–Fr je eine Früh- und Mittelschicht, an den Spätdienst-Tagen auch eine Spätschicht
+// Besetzungsprüfung: Mo–Fr je eine Früh- und Mittelschicht, an den Spätdienst-Tagen auch eine Spätschicht;
+// außerdem muss während der Öffnungszeiten immer jemand da sein
 export function coverageOn(plan) {
   return plan.settings.coverageCheck !== false;
 }
@@ -308,15 +309,48 @@ export function shiftSlot(start, end, settings) {
   return 'Mittel';
 }
 
+// Öffnungszeiten je Wochentag (Mo=0 … So=6), null = geschlossen
+export const DEFAULT_OPEN = [['11:00', '18:00'], ['11:00', '18:00'], ['11:00', '19:00'], ['11:00', '19:00'], ['11:00', '19:00'], ['12:00', '18:00'], null];
+
+export function openHours(plan, date) {
+  const o = (plan.settings.openHours || DEFAULT_OPEN)[weekday(date)];
+  return o && o[0] && o[1] ? o : null;
+}
+
+const hm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+// Fehlende Besetzung eines Tages: 'Früh' / 'Mittel' / 'Spät' (Mo–Fr) und Zeiten der Öffnungszeit ohne Personal ('18:00–19:00')
 export function coverageGaps(plan, date) {
-  if (!coverageOn(plan) || weekday(date) > 4 || holidayName(date, plan.settings)) return [];
+  if (!coverageOn(plan) || holidayName(date, plan.settings)) return [];
+  const wd = weekday(date);
   const have = new Set();
+  const iv = [];
   for (const e of employeesSorted(plan)) {
     if (!employed(e, date)) continue;
     const r = resolve(plan, planEntry(plan, date, e.id), e, date);
-    if (r && r.type === 'shift') have.add(shiftSlot(r.start, r.end, plan.settings));
+    if (r && r.type === 'shift') {
+      have.add(shiftSlot(r.start, r.end, plan.settings));
+      const a = parseTime(r.start), b = parseTime(r.end);
+      if (a !== null && b !== null) iv.push([a, b > a ? b : b + 1440]);
+    }
   }
-  const spaetTage = plan.settings.spaetTage || [2, 3, 4]; // Standard: Mi–Fr
-  const need = spaetTage.includes(weekday(date)) ? ['Früh', 'Mittel', 'Spät'] : ['Früh', 'Mittel'];
-  return need.filter((x) => !have.has(x));
+  const out = [];
+  if (wd <= 4) {
+    const spaetTage = plan.settings.spaetTage || [2, 3, 4]; // Standard: Mi–Fr
+    const need = spaetTage.includes(wd) ? ['Früh', 'Mittel', 'Spät'] : ['Früh', 'Mittel'];
+    out.push(...need.filter((x) => !have.has(x)));
+  }
+  const oh = openHours(plan, date);
+  if (oh) {
+    const o = parseTime(oh[0]), c = parseTime(oh[1]);
+    let cur = o;
+    for (const [a, b] of iv.sort((x, y) => x[0] - y[0])) {
+      if (b <= cur) continue;
+      if (a > cur) out.push(`${hm(cur)}–${hm(Math.min(a, c))}`);
+      cur = Math.max(cur, b);
+      if (cur >= c) break;
+    }
+    if (cur < c) out.push(`${hm(cur)}–${hm(c)}`);
+  }
+  return out;
 }
