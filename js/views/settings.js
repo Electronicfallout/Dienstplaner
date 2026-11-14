@@ -112,7 +112,7 @@ act('emp-edit', async ({ e: id }) => {
         <label class="field"><span>Wochenstunden</span><input type="number" name="weeklyHours" step="0.5" min="0" value="${esc(e.weeklyHours)}"></label>
         <label class="field"><span>Farbe</span><input type="color" name="color" value="${esc(e.color || '#1f77b4')}"></label>
       </div>
-      <div class="field"><span>Arbeitstage (für Tagessoll, Urlaub und ZA)</span><div class="seg">${[0, 1, 2, 3, 4].map((i) => `<label><input type="checkbox" name="wd${i}" ${!(e.workDays && e.workDays.length) || e.workDays.includes(i) ? 'checked' : ''}><span>${K.WOCHENTAGE[i]}</span></label>`).join('')}</div>
+      <div class="field"><span>Arbeitstage (für Tagessoll, Urlaub und ZA)</span><div class="seg">${[0, 1, 2, 3, 4, 5].map((i) => `<label><input type="checkbox" name="wd${i}" ${(e.workDays && e.workDays.length) ? (e.workDays.includes(i) ? 'checked' : '') : (i < 5 ? 'checked' : '')}><span>${K.WOCHENTAGE[i]}</span></label>`).join('')}</div>
         <small class="muted">Die Wochenstunden werden auf diese Tage verteilt. Bei freier Zeiteinteilung die Tage wählen, an denen sie meistens arbeitet.</small></div>
       <div class="row2">
         <label class="field"><span>Eintritt (optional)</span><input type="date" name="startDate" value="${esc(e.startDate || '')}"></label>
@@ -145,7 +145,7 @@ act('emp-edit', async ({ e: id }) => {
       startDate: r.startDate || null, endDate: r.endDate || null,
       saldoFrom: r.saldoFrom || null, zaStartH: Number(r.zaStartH) || 0,
       vacationAdjust: { ...(old.vacationAdjust || {}), [y]: Number(r.vacAdj) || 0 },
-      workDays: (() => { const w = [0, 1, 2, 3, 4].filter((i) => r['wd' + i]); return w.length && w.length < 5 ? w : null; })(),
+      workDays: (() => { const w = [0, 1, 2, 3, 4, 5].filter((i) => r['wd' + i]); return w.length && w.join() !== '0,1,2,3,4' ? w : null; })(),
       noTimes: !!r.noTimes,
       active: r.active, order: old.order ?? Object.keys(p.employees).length,
       updatedAt: now(),

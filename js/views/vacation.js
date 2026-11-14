@@ -70,7 +70,7 @@ function render(main) {
           <td class="num"><b class="${v.restH < 0 ? 'neg' : ''}">${fmt(v.restH)}</b></td></tr>`;
       }).join('')}</tbody>
     </table></div>
-    <p class="hint">Anspruch: ${esc(plan.settings.vacationWeeks)} Wochen × Wochenstunden. Ein Urlaubstag zählt ein Tagessoll (Wochenstunden ÷ Arbeitstage der Person), Samstage, Feiertage und freie Wochentage zählen nicht.</p>`;
+    <p class="hint">Anspruch: ${esc(plan.settings.vacationWeeks)} Wochen × Wochenstunden. Ein Urlaubstag zählt ein Tagessoll (Wochenstunden ÷ Arbeitstage der Person), Feiertage und Tage, an denen die Person laut Einstellungen nicht arbeitet, zählen nicht (Samstag nur bei fixen Samstagskräften).</p>`;
 
   const reqList = (list, title) => list.length ? `
     <h3>${title}</h3>

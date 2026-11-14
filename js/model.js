@@ -35,11 +35,11 @@ export function dayTarget(emp, settings) {
   return (Number(emp.weeklyHours) || 0) / n;
 }
 
-// Arbeitet die Person laut Vertrag an diesem Wochentag? (ohne Angabe: Mo–Fr)
+// Arbeitet die Person laut Vertrag an diesem Wochentag? (ohne Angabe: Mo–Fr; Samstag nur, wenn ausdrücklich gewählt)
 export function isWorkDay(emp, date) {
   const wd = weekday(date);
-  if (wd > 4) return false;
-  return !(Array.isArray(emp.workDays) && emp.workDays.length) || emp.workDays.includes(wd);
+  if (Array.isArray(emp.workDays) && emp.workDays.length) return emp.workDays.includes(wd);
+  return wd <= 4;
 }
 
 export function sollDay(emp, date, settings) {
