@@ -5,6 +5,7 @@ import './views/month.js';
 import './views/times.js';
 import './views/vacation.js';
 import './views/settings.js';
+import './pdf.js';
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('SW', e));

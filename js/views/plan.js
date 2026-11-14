@@ -67,6 +67,7 @@ function render(main) {
         ${admin ? '<button class="btn small ghost" data-act="copy-week">Vorwoche übernehmen</button>' : ''}
         ${admin ? '<button class="btn small primary" data-act="publish">Veröffentlichen</button>' : ''}
         <button class="btn small ghost" data-act="print">Drucken</button>
+        <button class="btn small ghost" data-act="pdf" data-kind="week">PDF</button>
       </div>
     </div>
     ${admin && draftDays.length ? `<div class="notice draft">✏️ <b>Entwurf:</b> ${draftDays.length === days.length ? 'Diese Woche ist' : `Ab ${K.fmtDate(draftDays[0])} ist die Woche`} noch nicht veröffentlicht. Die Mitarbeiter sehen sie noch nicht. ${pubUntil ? `Veröffentlicht bis ${K.fmtDate(pubUntil, true)}.` : ''}</div>` : ''}

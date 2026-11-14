@@ -29,6 +29,7 @@ function render(main) {
       </div>
       <div class="nav-group">
         <button class="btn small ghost" data-act="print">Drucken</button>
+        <button class="btn small ghost" data-act="pdf" data-kind="month">PDF</button>
         ${admin ? '<button class="btn small ghost" data-act="export-xlsx">Excel</button>' : ''}
       </div>
     </div>
