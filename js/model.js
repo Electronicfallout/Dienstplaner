@@ -45,7 +45,6 @@ export function isWorkDay(emp, date) {
 export function sollDay(emp, date, settings) {
   if (!employed(emp, date) || emp.noTimes) return 0;
   if (!isWorkDay(emp, date)) return 0;
-  if (holidayName(date, settings)) return 0;
   return dayTarget(emp, settings);
 }
 
@@ -89,8 +88,19 @@ export function shiftColor(plan, shiftId, start, end, date) {
   return autoShiftColor(start, end, date, sh && sh.label);
 }
 
-// Zeiten eines Eintrags auflösen
+// Zeiten eines Eintrags auflösen.
+// Feiertage zählen als voller Arbeitstag: Soll bleibt, und es gibt automatisch das Tagessoll als Feiertagsstunden gutgeschrieben.
+// Wer am Feiertag arbeitet, bekommt die Arbeitszeit zusätzlich (Plusstunden).
 export function resolve(plan, entry, emp, date) {
+  const r = resolveRaw(plan, entry, emp, date);
+  if (!r || !emp || !holidayName(date, plan.settings)) return r;
+  const hol = sollDay(emp, date, plan.settings);
+  if (r.type === 'status' && entry.credit !== undefined && entry.credit !== null && entry.credit !== '') return r;
+  if (r.type === 'shift' || r.type === 'note') return { ...r, creditH: r.creditH + hol };
+  return { ...r, creditH: Math.max(r.creditH, hol) };
+}
+
+function resolveRaw(plan, entry, emp, date) {
   if (!entry) return null;
   const s = plan.settings;
   if (entry.kind === 'shift') {
@@ -148,7 +158,7 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
       if (pr.status === 'Krankenstand' && soll > 0) r.krankTage++;
       if (pr.status === 'ZA') r.zaTage++;
     }
-        const za = pr && pr.type === 'status' && pr.status === 'ZA' ? credit : 0;
+        const za = pr && pr.type === 'status' && pr.status === 'ZA' && !holidayName(d, s) ? credit : 0;
     r.tage.push({ date: d, pe, pr, tr, soll, ist, credit, za });
   }
   r.saldo = r.tage.reduce((a, t) => a + t.ist + t.credit - t.za - t.soll, 0);
@@ -184,7 +194,7 @@ export function vacationYear(plan, emp, y) {
     for (const d of monthDays(y, m)) {
       const pe = planEntry(plan, d, emp.id);
       if (!pe || pe.kind !== 'status' || pe.status !== 'Urlaub') continue;
-      const soll = sollDay(emp, d, s);
+      const soll = holidayName(d, s) ? 0 : sollDay(emp, d, s); // Urlaub am Feiertag verbraucht keinen Urlaub
       tage.push(d);
       if (soll <= 0) continue;
       const h = (pe.credit !== undefined && pe.credit !== null && pe.credit !== '') ? Number(pe.credit) : soll;

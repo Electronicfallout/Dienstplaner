@@ -14,7 +14,7 @@ export const STATUS = {
   'ZA':           { credit: 'za',    farbe: '#c48a10', kurz: 'ZA' },
   'Krankenstand': { credit: 'tag',  farbe: '#c0392b', kurz: 'K' },
   'Ersatzfrei':   { credit: 'tag',  farbe: '#7d5bbe', kurz: 'EF' },
-  'Feiertag':     { credit: 'null', farbe: '#5b7dbe', kurz: 'FT' },
+  'Feiertag':     { credit: 'tag',  farbe: '#5b7dbe', kurz: 'FT' },
 };
 
 export function pad(n) { return String(n).padStart(2, '0'); }

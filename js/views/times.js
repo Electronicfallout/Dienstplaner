@@ -77,7 +77,7 @@ function render(main) {
           <td><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(x.date)}</td><td>${pl}</td><td>${rec}${note}</td>
           <td class="num">${h ? K.fmtH(h) : ''}</td><td class="num">${diff ? diffBadge(diff) : ''}</td></tr>`;
       }).join('')}</tbody>
-      <tfoot><tr><td colspan="3">Summe (Ist inkl. Urlaub/ZA/Krankenstand) / Soll</td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b></td><td class="num">${K.fmtH(st.soll)}</td></tr></tfoot>
+      <tfoot><tr><td colspan="3">Summe (Ist inkl. Feiertag/Urlaub/ZA/Krankenstand) / Soll</td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b></td><td class="num">${K.fmtH(st.soll)}</td></tr></tfoot>
     </table></div>
     <p class="hint">${admin ? 'Ist = erfasste Zeit, sonst die geplante. ' : 'Tippe auf einen Tag, um deine tatsächliche Zeit einzutragen. Ohne Eintrag zählt die geplante Zeit. '}Ab ${esc(plan.settings.pauseAfterH)} Stunden werden automatisch ${esc(plan.settings.pauseMin)} Minuten Pause abgezogen.</p>`;
 
