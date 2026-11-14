@@ -18,7 +18,7 @@ export function shiftsSorted(plan) {
   return Object.entries(plan.shifts)
     .filter(([, s]) => alive(s))
     .map(([id, s]) => ({ id, ...s }))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    .sort((a, b) => (a.start || "").localeCompare(b.start || "") || (a.end || "").localeCompare(b.end || ""));
 }
 
 export const entryKey = (date, empId) => `${date}|${empId}`;
