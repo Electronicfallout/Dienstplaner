@@ -5,6 +5,31 @@ import { esc, act, loadScript, toast } from '../ui.js';
 import * as K from '../calc.js';
 import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished, eventsOn, coverageGaps } from '../model.js';
 import { cellHtml, editEntry, diffBadge } from './plan.js';
+import { LS } from '../storage.js';
+
+// Zoom der Monatstabelle (mit zwei Fingern oder + / −), pro Gerät gemerkt
+const ZMIN = 0.4, ZMAX = 2;
+let zoom = (() => { const z = Number(LS.get('dp.mzoom')); return z >= ZMIN && z <= ZMAX ? z : 1; })();
+function setZoom(z, save = true) {
+  zoom = Math.min(ZMAX, Math.max(ZMIN, Math.round(z * 100) / 100));
+  const t = document.querySelector('table.plan.month');
+  if (t) t.style.zoom = zoom;
+  const l = document.getElementById('mzoom');
+  if (l) l.textContent = Math.round(zoom * 100) + ' %';
+  if (save) LS.set('dp.mzoom', String(zoom));
+}
+function pinch(box) {
+  let d0 = 0, z0 = 1;
+  const dist = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  box.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { d0 = dist(e); z0 = zoom; } }, { passive: true });
+  box.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 2 || !d0) return;
+    e.preventDefault();
+    setZoom(z0 * dist(e) / d0, false);
+  }, { passive: false });
+  box.addEventListener('touchend', (e) => { if (d0 && e.touches.length < 2) { d0 = 0; setZoom(zoom); } });
+  box.addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault(); setZoom(zoom * (e.deltaY < 0 ? 1.1 : 0.9)); }, { passive: false });
+}
 
 const td = K.parseIso(K.today());
 App.month = { y: td.y, m: td.m };
@@ -29,11 +54,12 @@ function render(main) {
       </div>
       <div class="nav-group">
         <button class="btn small ghost" data-act="print">Drucken</button>
+        <span class="zoom-group"><button class="icon-btn small" data-act="mzoom" data-f="0.85" aria-label="Verkleinern">−</button><button class="btn small ghost" data-act="mzoom" data-f="0" id="mzoom" title="Zoom zurücksetzen">${Math.round(zoom * 100)} %</button><button class="icon-btn small" data-act="mzoom" data-f="1.18" aria-label="Vergrößern">+</button></span>
         <button class="btn small ghost" data-act="pdf" data-kind="month">PDF</button>
         ${admin ? '<button class="btn small ghost" data-act="export-xlsx">Excel</button>' : ''}
       </div>
     </div>
-    <div class="table-scroll"><table class="plan month">
+    <div class="table-scroll pinch"><table class="plan month" style="zoom:${zoom}">
       <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>`).join('')}<th>Event / Anmerkung</th></tr></thead>
       <tbody>${days.map((d) => {
         const wd = K.weekday(d);
@@ -56,7 +82,8 @@ function render(main) {
         <tr><th class="sticky">Urlaub / Krank</th>${stats.map((s) => `<td>${s.urlaubTage} / ${s.krankTage} T</td>`).join('')}<td></td></tr>
       </tfoot>
     </table></div>
-    <p class="hint">Geplant = Arbeitszeit laut Plan plus angerechnete Stunden für Feiertage, Urlaub, ZA, Krankenstand und Ersatzfrei (ZA wird dabei vom Zeitkonto abgezogen). Die tatsächlich erfassten Zeiten stehen unter „Zeiten“.</p>`;
+    <p class="hint">Geplant = Arbeitszeit laut Plan plus angerechnete Stunden für Feiertage, Urlaub, ZA, Krankenstand und Ersatzfrei (ZA wird dabei vom Zeitkonto abgezogen). Die tatsächlich erfassten Zeiten stehen unter „Zeiten“. Zoomen: mit zwei Fingern in der Tabelle oder mit + / −.</p>`;
+  pinch(main.querySelector('.table-scroll.pinch'));
 }
 
 act('month', ({ d }) => {
@@ -116,3 +143,5 @@ act('export-xlsx', async () => {
 });
 
 registerView('month', { title: 'Monat', icon: '🗓️', roles: ['admin', 'employee'], render });
+
+act('mzoom', ({ f }) => setZoom(+f ? zoom * +f : 1));

@@ -240,6 +240,10 @@ table.times tfoot td { background: var(--surface-2); font-weight: 600; }
 .notice { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }
 .notice.warn { background: var(--warn-bg); color: var(--warn); }
 .field.wide { grid-column: 1 / -1; }
+.table-scroll.pinch { touch-action: pan-x pan-y; }
+.zoom-group { display: inline-flex; align-items: center; gap: 2px; }
+.icon-btn.small { width: 30px; height: 30px; font-size: 1rem; }
+body.printmode table.plan.month { zoom: 1 !important; }
 .notice.proposals { background: var(--surface); border: 1px solid var(--line); }
 .prop-list { list-style: none; margin: 6px 0 0; padding: 0; }
 .prop-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
