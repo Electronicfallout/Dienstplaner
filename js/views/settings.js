@@ -9,6 +9,7 @@ import { importIcs } from '../ics.js';
 import { now, COLORS, merge, clone } from '../store.js';
 import { makeInvite, redirectUri } from '../storage.js';
 import { importExcel } from '../import-excel.js';
+import { satSettingsHtml } from '../saturday.js';
 
 function render(main) {
   const plan = App.plan.obj;
@@ -38,6 +39,8 @@ function render(main) {
       <div class="card-head"><h2>Schichten</h2><button class="btn small primary" data-act="shift-edit">+ Neu</button></div>
       <ul class="list">${shifts.map((sh) => `<li><div class="grow"><b><span class="swatch" style="background:${esc(shiftColor(plan, sh.id, sh.start, sh.end, null) || 'transparent')}"></span>${esc(sh.start)}–${esc(sh.end)}</b><small>${esc(sh.label)} · ${K.fmtH(K.workHours(sh.start, sh.end, s))} h Arbeitszeit</small></div><button class="btn small ghost" data-act="shift-edit" data-id="${sh.id}">Bearbeiten</button></li>`).join('')}</ul>
     </section>
+
+    ${satSettingsHtml(plan)}
 
     <section class="card">
       <div class="card-head"><h2>Events im Shop</h2><div class="btn-row"><button class="btn small" data-act="ics-import">Kalender (.ics) importieren</button><button class="btn small primary" data-act="rec-edit">+ Wiederkehrend</button></div></div>

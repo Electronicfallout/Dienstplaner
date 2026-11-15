@@ -6,6 +6,7 @@ import * as K from '../calc.js';
 import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive, setEntry, isPublished, eventsOn, recurringOn, recurringText, coverageGaps } from '../model.js';
 import { now } from '../store.js';
 import { proposalsHtml } from '../proposals.js';
+import '../saturday.js';
 import { LS } from '../storage.js';
 
 App.week = K.mondayOf(K.today());
@@ -66,6 +67,7 @@ function render(main) {
       <div class="nav-group">
         <button class="btn small ghost" data-act="layout" data-l="${layout === 'table' ? 'list' : 'table'}">${layout === 'table' ? 'Liste' : 'Tabelle'}</button>
         ${admin ? '<button class="btn small ghost" data-act="copy-week">Vorwoche übernehmen</button>' : ''}
+        ${admin ? '<button class="btn small ghost" data-act="sat-rotate">Samstage</button>' : ''}
         ${admin ? '<button class="btn small primary" data-act="publish">Veröffentlichen</button>' : ''}
         <button class="btn small ghost" data-act="print">Drucken</button>
         <button class="btn small ghost" data-act="pdf" data-kind="week">PDF</button>
