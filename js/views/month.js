@@ -60,7 +60,7 @@ function render(main) {
       </div>
     </div>
     <div class="table-scroll pinch"><table class="plan month" style="zoom:${zoom}">
-      <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>`).join('')}<th>Event / Anmerkung</th></tr></thead>
+      <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>`).join('')}<th class="evcol">Events im Shop</th><th class="evcol">Anmerkung</th></tr></thead>
       <tbody>${days.map((d) => {
         const wd = K.weekday(d);
         const hol = K.holidayName(d, plan.settings);
@@ -73,13 +73,14 @@ function render(main) {
             const pe = planEntry(plan, d, e.id);
             return `<td class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${e.id}"` : ''}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
           }).join('')}
-          <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${[hol && esc(hol), ...eventsOn(plan, d).map((e) => `<span class="${e.noPrint ? 'noprint' : ''}">${e.recurring ? '↻' : '🎲'} ${esc(e.title)}</span>`), day.note && esc(day.note)].filter(Boolean).join(' · ')}</td>
+          <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${[hol && esc(hol), ...eventsOn(plan, d).map((e) => `<span class="${e.noPrint ? 'noprint' : ''}">${e.recurring ? '↻' : '🎲'} ${esc(e.title)}</span>`)].filter(Boolean).join(' · ')}</td>
+          <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${day.note ? esc(day.note) : ''}</td>
         </tr>`;
       }).join('')}</tbody>
       <tfoot>
-        <tr><th class="sticky">Soll</th>${stats.map((s, i) => `<td>${emps[i].noTimes ? '–' : K.fmtH(s.soll) + ' h'}</td>`).join('')}<td></td></tr>
-        <tr><th class="sticky">Geplant</th>${stats.map((s, i) => `<td><b>${K.fmtH(s.planH + s.creditH)} h</b>${emps[i].noTimes ? '' : diffBadge(s.planH + s.creditH - s.soll)}</td>`).join('')}<td></td></tr>
-        <tr><th class="sticky">Urlaub / Krank</th>${stats.map((s) => `<td>${s.urlaubTage} / ${s.krankTage} T</td>`).join('')}<td></td></tr>
+        <tr><th class="sticky">Soll</th>${stats.map((s, i) => `<td>${emps[i].noTimes ? '–' : K.fmtH(s.soll) + ' h'}</td>`).join('')}<td></td><td></td></tr>
+        <tr><th class="sticky">Geplant</th>${stats.map((s, i) => `<td><b>${K.fmtH(s.planH + s.creditH)} h</b>${emps[i].noTimes ? '' : diffBadge(s.planH + s.creditH - s.soll)}</td>`).join('')}<td></td><td></td></tr>
+        <tr><th class="sticky">Urlaub / Krank</th>${stats.map((s) => `<td>${s.urlaubTage} / ${s.krankTage} T</td>`).join('')}<td></td><td></td></tr>
       </tfoot>
     </table></div>
     <p class="hint">Geplant = Arbeitszeit laut Plan plus angerechnete Stunden für Feiertage, Urlaub, ZA, Krankenstand und Ersatzfrei (ZA wird dabei vom Zeitkonto abgezogen). Die tatsächlich erfassten Zeiten stehen unter „Zeiten“. Zoomen: mit zwei Fingern in der Tabelle oder mit + / −.</p>`;

@@ -73,7 +73,7 @@ function buildMonth(plan) {
   const { y, m } = App.month;
   const days = K.monthDays(y, m);
   const emps = employeesSorted(plan).filter((e) => days.some((d) => employed(e, d)));
-  const head = ['Tag', ...emps.map((e) => clean(e.name)), 'Event / Anmerkung'];
+  const head = ['Tag', ...emps.map((e) => clean(e.name)), 'Events im Shop', 'Anmerkung'];
   const body = days.map((d) => {
     const hol = K.holidayName(d, plan.settings);
     const day = alive(plan.days[d]) ? plan.days[d] : {};
@@ -81,13 +81,14 @@ function buildMonth(plan) {
     return [
       { text: `${K.WOCHENTAGE[wd]} ${K.fmtDate(d)}`, bold: true, fill: wd === 6 ? [238, 240, 243] : null },
       ...emps.map((e) => cellFor(plan, d, e)),
-      { text: [hol && clean(hol), eventText(plan, d), clean(day.note)].filter(Boolean).join(' · ') },
+      { text: [hol && clean(hol), eventText(plan, d)].filter(Boolean).join(' · ') },
+      { text: clean(day.note) },
     ];
   });
   const stats = emps.map((e) => monthStats(plan, e, y, m, null));
   const foot = [
-    ['Soll', ...stats.map((s, i) => (emps[i].noTimes ? '–' : `${K.fmtH(s.soll)} h`)), ''],
-    ['Geplant', ...stats.map((s) => `${K.fmtH(s.planH + s.creditH)} h`), ''],
+    ['Soll', ...stats.map((s, i) => (emps[i].noTimes ? '–' : `${K.fmtH(s.soll)} h`)), '', ''],
+    ['Geplant', ...stats.map((s) => `${K.fmtH(s.planH + s.creditH)} h`), '', ''],
   ];
   return { title: `Dienstplan ${K.MONATE[m - 1]} ${y}`, file: `Dienstplan_${y}-${K.pad(m)}.pdf`, head, body, foot, nEmp: emps.length };
 }
