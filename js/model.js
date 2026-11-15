@@ -111,7 +111,7 @@ function resolveRaw(plan, entry, emp, date) {
     }
     const pause = (entry.pause === undefined || entry.pause === null || entry.pause === '') ? autoPauseMin(start, end, s) : Number(entry.pause);
     const h = workHours(start, end, s, entry.pause);
-    return { type: 'shift', start, end, pause, workH: h || 0, creditH: 0, label, text: `${start}–${end}`, note: entry.note, color: shiftColor(plan, entry.shiftId, start, end, date) };
+    return { type: 'shift', start, end, pause, workH: h || 0, creditH: 0, label, text: `${start}–${end}`, note: entry.note, color: shiftColor(plan, entry.shiftId, start, end, date), ...nightBonus(start, end, s) };
   }
   if (entry.kind === 'status') {
     const def = STATUS[entry.status] || { credit: 'null' };
@@ -126,19 +126,31 @@ function resolveRaw(plan, entry, emp, date) {
   return null;
 }
 
+// Nachtzuschlag: Arbeitszeit ab settings.nightFrom (Standard 21:00) zählt mit Faktor settings.nightFactor (Standard 1,5).
+// Geliefert wird nur der Aufschlag (bei 1,5 also die Hälfte der Stunden ab 21 Uhr), getrennt von der tatsächlichen Arbeitszeit.
+export function nightBonus(start, end, settings) {
+  const a = parseTime(start); let b = parseTime(end);
+  if (a === null || b === null) return { nightH: 0, bonusH: 0 };
+  if (b <= a) b += 1440;
+  const n = parseTime(settings.nightFrom || '21:00') ?? 1260;
+  const nightH = Math.max(0, b - Math.max(a, n)) / 60;
+  const f = Number(settings.nightFactor ?? 1.5);
+  return { nightH, bonusH: nightH * Math.max(0, f - 1) };
+}
+
 // Vom Mitarbeiter erfasste Zeit auflösen
 export function resolveTime(t, settings) {
   if (!alive(t)) return null;
   if (t.status) return { type: 'status', status: t.status, workH: 0, text: t.status };
   const h = workHours(t.start, t.end, settings, t.pause);
   const pause = (t.pause === undefined || t.pause === null || t.pause === '') ? autoPauseMin(t.start, t.end, settings) : Number(t.pause);
-  return { type: 'shift', start: t.start, end: t.end, pause, workH: h || 0, text: `${t.start}–${t.end}` };
+  return { type: 'shift', start: t.start, end: t.end, pause, workH: h || 0, text: `${t.start}–${t.end}`, ...nightBonus(t.start, t.end, settings) };
 }
 
 // Monatsauswertung für eine Person. times = erfasste Zeiten des Mitarbeiters (oder null, wenn nicht zugänglich)
 export function monthStats(plan, emp, y, m, times, untilDate) {
   const s = plan.settings;
-  const r = { soll: 0, planH: 0, istH: 0, creditH: 0, erfasstTage: 0, abweichTage: 0, urlaubTage: 0, krankTage: 0, zaTage: 0, tage: [] };
+  const r = { soll: 0, planH: 0, istH: 0, creditH: 0, bonusH: 0, erfasstTage: 0, abweichTage: 0, urlaubTage: 0, krankTage: 0, zaTage: 0, tage: [] };
   for (const d of monthDays(y, m)) {
     if (untilDate && d > untilDate) break;
     const pe = planEntry(plan, d, emp.id);
@@ -152,6 +164,8 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
     r.planH += planWork;
     r.istH += ist;
     r.creditH += credit;
+    const bonus = tr ? (tr.bonusH || 0) : (pr && pr.bonusH) || 0;
+    r.bonusH += bonus;
     if (tr) { r.erfasstTage++; if (Math.abs(tr.workH - planWork) > 0.01) r.abweichTage++; }
     if (pr && pr.type === 'status') {
       if (pr.status === 'Urlaub' && soll > 0) r.urlaubTage++;
@@ -159,27 +173,33 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
       if (pr.status === 'ZA') r.zaTage++;
     }
         const za = pr && pr.type === 'status' && pr.status === 'ZA' && !holidayName(d, s) ? credit : 0;
-    r.tage.push({ date: d, pe, pr, tr, soll, ist, credit, za });
+    r.tage.push({ date: d, pe, pr, tr, soll, ist, credit, za, bonus });
   }
-  r.saldo = r.tage.reduce((a, t) => a + t.ist + t.credit - t.za - t.soll, 0);
+  r.saldo = r.tage.reduce((a, t) => a + t.ist + t.credit - t.za - t.soll + t.bonus, 0);
   return r;
 }
 
 // Saldo (Plus-/Minusstunden) vom Startdatum bis einschließlich untilDate
 export function saldoUntil(plan, emp, untilDate, times) {
+  return saldoDetail(plan, emp, untilDate, times).saldo;
+}
+
+// Zeitkonto mit Aufteilung: Startwert, Plus/Minus aus Arbeitszeit, Nachtzuschlag
+export function saldoDetail(plan, emp, untilDate, times) {
   // Zeitkonto zählt ab dem Startdatum der Person, sonst ab dem allgemeinen Start (Inbetriebnahme der App)
   let from = emp.saldoFrom || plan.settings.saldoFrom || `${parseIso(untilDate).y}-01-01`;
   if (emp.startDate && emp.startDate > from) from = emp.startDate;
-  let saldo = Number(emp.zaStartH) || 0;
-  if (from > untilDate) return saldo;
+  const startH = Number(emp.zaStartH) || 0;
+  let arbeitH = 0, bonusH = 0;
+  if (from > untilDate) return { saldo: startH, startH, arbeitH, bonusH };
   let { y, m } = parseIso(from);
   const end = parseIso(untilDate);
   while (y < end.y || (y === end.y && m <= end.m)) {
     const st = monthStats(plan, emp, y, m, times, untilDate);
-    for (const t of st.tage) if (t.date >= from) saldo += t.ist + t.credit - t.za - t.soll; // ZA zählt als Stunden, verbraucht aber das Zeitkonto
+    for (const t of st.tage) if (t.date >= from) { arbeitH += t.ist + t.credit - t.za - t.soll; bonusH += t.bonus; } // ZA zählt als Stunden, verbraucht aber das Zeitkonto
     m++; if (m > 12) { m = 1; y++; }
   }
-  return saldo;
+  return { saldo: startH + arbeitH + bonusH, startH, arbeitH, bonusH };
 }
 
 // Datum + k Monate (Tag wird auf das Monatsende gekürzt, z. B. 31.01. + 1 Monat = 28.02.)

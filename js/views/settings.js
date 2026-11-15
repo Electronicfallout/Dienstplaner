@@ -64,6 +64,8 @@ function render(main) {
         <label class="field"><span>Urlaub (Wochen pro Jahr)</span><input type="number" name="vacationWeeks" step="0.5" min="0" value="${esc(s.vacationWeeks)}"></label>
         <label class="field"><span>Arbeitstage pro Woche (für Tagessoll)</span><input type="number" name="workdaysPerWeek" step="0.5" min="1" max="7" value="${esc(s.workdaysPerWeek)}"></label>
         <label class="field"><span>Zeitkonto zählt ab (für alle)</span><input type="date" name="saldoFrom" value="${esc(s.saldoFrom || '')}"></label>
+        <label class="field"><span>Zuschlag ab (Uhrzeit)</span><input type="time" name="nightFrom" value="${esc(s.nightFrom || '21:00')}"></label>
+        <label class="field"><span>Faktor ab dieser Zeit (1,5 = +50 %)</span><input type="number" name="nightFactor" step="0.05" min="1" value="${esc(s.nightFactor ?? 1.5)}"></label>
         <label class="field"><span>Frühschicht = Beginn bis</span><input type="time" name="fruehBis" value="${esc(s.fruehBis || '09:00')}"></label>
         <label class="field"><span>Spätschicht = Ende ab</span><input type="time" name="spaetAb" value="${esc(s.spaetAb || '21:00')}"></label>
         <label class="check"><input type="checkbox" name="coverageCheck" ${s.coverageCheck !== false ? 'checked' : ''}><span>Mo–Fr prüfen, ob Früh, Mittel und Spät besetzt sind</span></label>
@@ -311,6 +313,7 @@ act('rules-save', () => {
     p.settings = {
       ...p.settings, firma: f.firma.trim(), pauseAfterH: Number(f.pauseAfterH), pauseMin: Number(f.pauseMin),
       vacationWeeks: Number(f.vacationWeeks), workdaysPerWeek: Number(f.workdaysPerWeek) || 5, saldoFrom: f.saldoFrom || null,
+      nightFrom: f.nightFrom || '21:00', nightFactor: Number(f.nightFactor) || 1.5,
       fruehBis: f.fruehBis || '09:00', spaetAb: f.spaetAb || '21:00', coverageCheck: !!f.coverageCheck, spaetTage: [0, 1, 2, 3, 4].filter((i) => f['spaet' + i]),
       openHours: [0, 1, 2, 3, 4, 5, 6].map((i) => (f['oa' + i] && f['ob' + i] ? [f['oa' + i], f['ob' + i]] : null)), updatedAt: now(),
     };
