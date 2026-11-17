@@ -20,6 +20,11 @@ const name = (plan, id) => (plan.employees[id] && !plan.employees[id].deleted ? 
 const day = (d) => `${K.WOCHENTAGE[K.weekday(d)]} ${K.fmtDate(d)}`;
 const OPEN = ['offen', 'planer'];
 
+// Vom Planer geschickter Tausch: wer muss noch zustimmen?
+function pendingFor(plan, p) {
+  return (p.need || []).filter((id) => !(p.accepted || {})[id]);
+}
+
 export function proposalsOf(plan) {
   return Object.entries(plan.proposals || {}).filter(([, p]) => alive(p)).map(([id, p]) => ({ id, ...p }))
     .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
@@ -106,6 +111,12 @@ export function proposalsHtml(plan) {
   const rows = [];
   for (const p of list) {
     const txt = `<div class="grow">${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}${p.gaps && p.gaps.length ? `<small class="warn-text">⚠ Danach fehlt: ${esc(p.gaps.join(' · '))}</small>` : ''}</div>`;
+    if (p.fromPlaner) {
+      const open = pendingFor(plan, p);
+      if (admin && p.status === 'offen') rows.push(`<li><div class="grow">Dein Vorschlag: ${esc(describe(plan, p))}<small>wartet auf ${esc(open.map((id) => name(plan, id)).join(', '))}</small></div><div class="btn-row"><button class="btn small ghost" data-act="prop-withdraw" data-id="${p.id}">Zurückziehen</button></div></li>`);
+      else if (!admin && p.status === 'offen' && open.includes(me)) rows.push(`<li><div class="grow">Vorschlag vom Planer: ${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}</div><div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${p.id}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${p.id}">Ablehnen</button></div></li>`);
+      continue;
+    }
     if (admin && ((p.kind === 'change' && p.status === 'offen') || p.status === 'planer')) {
       rows.push(`<li>${txt}<div class="btn-row"><button class="btn small primary" data-act="prop-confirm" data-id="${p.id}">Bestätigen</button><button class="btn small" data-act="prop-reject" data-id="${p.id}">Ablehnen</button></div></li>`);
     } else if (!admin && p.kind === 'swap' && p.with === me && p.status === 'offen') {
@@ -115,7 +126,7 @@ export function proposalsHtml(plan) {
     }
   }
   if (!rows.length) return '';
-  return `<div class="notice proposals"><b>${admin ? 'Vorschläge der Mitarbeiter' : 'Anfragen'}</b><ul class="prop-list">${rows.join('')}</ul></div>`;
+  return `<div class="notice proposals"><b>${admin ? 'Tausch-Vorschläge' : 'Anfragen'}</b><ul class="prop-list">${rows.join('')}</ul></div>`;
 }
 
 // Für die Glocke: was ist zu tun, was ist neu?
@@ -126,6 +137,12 @@ export function proposalNotices(plan) {
   for (const p of proposalsOf(plan)) {
     if (p.date < K.addDays(K.today(), -7)) continue;
     const text = describe(plan, p);
+    if (p.fromPlaner) {
+      if (admin && ['erledigt', 'abgelehnt'].includes(p.status)) news.push({ at: p.updatedAt, icon: p.status === 'erledigt' ? '✅' : '❌', text: `Dein Tauschvorschlag ${STATUS_TEXT[p.status]}: ${text}`, sub: p.reply || '', view: 'plan', date: p.date });
+      if (!admin && p.status === 'offen' && pendingFor(plan, p).includes(me)) todo.push({ icon: '🔁', text: 'Der Planer schlägt einen Tausch vor', sub: text, view: 'plan', date: p.date });
+      if (!admin && (p.by === me || p.with === me) && ['erledigt', 'abgelehnt'].includes(p.status)) news.push({ at: p.updatedAt, icon: p.status === 'erledigt' ? '✅' : '❌', text: `Tausch ${STATUS_TEXT[p.status]}: ${text}`, sub: p.reply || '', view: 'plan', date: p.date });
+      continue;
+    }
     if (admin) {
       if ((p.kind === 'change' && p.status === 'offen') || p.status === 'planer') todo.push({ icon: '✋', text: `Bitte entscheiden: ${text}`, sub: p.gaps && p.gaps.length ? `Danach fehlt: ${p.gaps.join(' · ')}` : '', view: 'plan', date: p.date });
       else if (p.kind === 'swap' && p.status === 'erledigt' && !p.decidedBy) news.push({ at: p.updatedAt, icon: '🔁', text: `Getauscht: ${text}`, view: 'plan', date: p.date });
@@ -167,6 +184,10 @@ export async function propose(date, planerFor = null) {
           <label><input type="radio" name="mode" value="give"><span>nur abgeben</span></label>
         </div>
         <label class="field" data-m="other" hidden><span>Welchen Tag übernimmt ${planer ? esc(name(plan, me)) : 'du'}?</span><input type="date" name="withDate" value="${K.addDays(date, 1)}"></label>
+        ${planer ? `<div class="seg">
+          <label><input type="radio" name="how" value="now" checked><span>sofort tauschen</span></label>
+          <label><input type="radio" name="how" value="ask"><span>als Vorschlag schicken (Bestätigung nötig)</span></label>
+        </div>` : ''}
         <p class="calc" id="preview"></p>
       </div>
       <div data-k="change" hidden>
@@ -229,6 +250,13 @@ export async function propose(date, planerFor = null) {
   if (r.kind === 'swap') Object.assign(p, { kind: 'swap', with: r.with, mode: r.mode, withDate: r.mode === 'other' ? r.withDate : null });
   else Object.assign(p, { kind: 'change', change: r.kind === 'free' ? { kind: 'status', status: 'Frei' } : { kind: 'shift', start: r.start, end: r.end } });
   p.snap = snapshot(plan, p);
+  if (planer && r.how === 'ask') {
+    const need = [p.by, p.with].filter((id) => plan.employees[id] && !plan.employees[id].noTimes);
+    Object.assign(p, { fromPlaner: true, need, accepted: {} });
+    App.plan.update((pl) => { pl.proposals = pl.proposals || {}; pl.proposals['p' + randomId(8)] = p; });
+    toast(`Vorschlag an ${need.map((id) => name(plan, id)).join(' und ')} geschickt`);
+    return;
+  }
   if (planer) {
     App.plan.update((pl) => {
       apply(pl, p, t);
@@ -256,12 +284,20 @@ act('propose', ({ d }) => propose(d));
 
 act('prop-withdraw', ({ id }) => update(id, (pl, p, t) => { pl.proposals[id] = { ...p, status: 'zurückgezogen', updatedAt: t }; }));
 
-act('prop-decline', ({ id }) => update(id, (pl, p, t) => { pl.proposals[id] = { ...p, status: 'abgelehnt', reply: `${name(pl, p.with)} hat abgelehnt`, updatedAt: t }; }));
+act('prop-decline', ({ id }) => update(id, (pl, p, t) => { pl.proposals[id] = { ...p, status: 'abgelehnt', reply: `${name(pl, p.fromPlaner ? App.cfg.empId : p.with)} hat abgelehnt`, updatedAt: t }; }));
 
 act('prop-accept', ({ id }) => {
   let msg = '';
   update(id, (pl, p, t) => {
     if (stale(pl, p)) { pl.proposals[id] = { ...p, status: 'abgelehnt', reply: 'Der Plan hat sich inzwischen geändert. Bitte neu anfragen.', updatedAt: t }; msg = 'Plan hat sich geändert, Anfrage verfällt'; return; }
+    if (p.fromPlaner) {
+      const q = { ...p, accepted: { ...(p.accepted || {}), [App.cfg.empId]: true }, updatedAt: t };
+      if (pendingFor(pl, q).length) { pl.proposals[id] = q; msg = `Angenommen. Jetzt fehlt noch die Zustimmung von ${pendingFor(pl, q).map((x) => name(pl, x)).join(', ')}.`; return; }
+      apply(pl, q, t);
+      pl.proposals[id] = { ...q, status: 'erledigt', decidedBy: 'planer', reply: 'von allen bestätigt', updatedAt: t };
+      msg = 'Getauscht. Der Plan ist aktualisiert.';
+      return;
+    }
     const gaps = newGaps(pl, p);
     if (gaps.length) { pl.proposals[id] = { ...p, status: 'planer', gaps, updatedAt: t }; msg = 'Angenommen. Weil danach nicht alles besetzt ist, muss der Planer bestätigen.'; return; }
     apply(pl, p, t);
