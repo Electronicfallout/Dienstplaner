@@ -335,6 +335,7 @@ export async function editEntry(date, empId) {
     <p class="calc" id="calc"></p>
     ${recorded ? `<p class="small muted">Vom Mitarbeiter erfasst: ${recorded.status ? esc(recorded.status) : `${esc(recorded.start)}–${esc(recorded.end)}`}</p>` : ''}
     ${pe && pe.source === 'vorlage' ? '<p class="small muted">Aktuell aus dem fixen Wochenplan.</p>' : ''}
+    <p><button class="link" type="button" data-act="planer-swap" data-d="${date}" data-e="${empId}">⇄ Mit jemandem tauschen</button></p>
     ${pe && pe.source === 'feiertag' ? `<p class="small muted">Feiertag: ${esc(pe.note)}</p>` : ''}`;
 
   await openModal({

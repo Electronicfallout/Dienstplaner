@@ -142,16 +142,19 @@ export function proposalNotices(plan) {
 
 // ---------- Vorschlag machen (Mitarbeiter) ----------
 
-export async function propose(date) {
+// planerFor: der Planer tauscht direkt für diese Person (wird sofort übernommen, keine Anfrage)
+export async function propose(date, planerFor = null) {
   const plan = App.plan.obj;
-  const me = App.cfg.empId;
+  const planer = !!planerFor && isAdmin();
+  const me = planer ? planerFor : App.cfg.empId;
+  const du = planer ? name(plan, me) : 'du';
   const mine = entryText(plan, date, me);
   const others = employeesSorted(plan).filter((e) => e.id !== me && employed(e, date));
   const shifts = shiftsSorted(plan);
   const r = await openModal({
-    title: `${day(date)}: ${mine}`,
+    title: planer ? `${name(plan, me)} · ${day(date)}: ${mine}` : `${day(date)}: ${mine}`,
     body: `
-      <div class="seg">
+      <div class="seg" ${planer ? 'hidden' : ''}>
         <label><input type="radio" name="kind" value="swap" checked><span>Mit jemandem tauschen</span></label>
         <label><input type="radio" name="kind" value="change"><span>Andere Zeit</span></label>
         <label><input type="radio" name="kind" value="free"><span>Frei wünschen</span></label>
@@ -163,7 +166,7 @@ export async function propose(date) {
           <label><input type="radio" name="mode" value="other"><span>dafür einen anderen Tag übernehmen</span></label>
           <label><input type="radio" name="mode" value="give"><span>nur abgeben</span></label>
         </div>
-        <label class="field" data-m="other" hidden><span>Welchen Tag übernimmst du?</span><input type="date" name="withDate" value="${K.addDays(date, 1)}"></label>
+        <label class="field" data-m="other" hidden><span>Welchen Tag übernimmt ${planer ? esc(name(plan, me)) : 'du'}?</span><input type="date" name="withDate" value="${K.addDays(date, 1)}"></label>
         <p class="calc" id="preview"></p>
       </div>
       <div data-k="change" hidden>
@@ -174,7 +177,7 @@ export async function propose(date) {
         </div>
       </div>
       <label class="field"><span>Nachricht (optional)</span><input name="reason" maxlength="120" placeholder="z. B. Arzttermin"></label>
-      <p class="small muted">Ein Tausch gilt, sobald die andere Person annimmt und danach weiterhin alles besetzt ist. Sonst entscheidet der Planer. Andere Zeiten und Frei-Wünsche bestätigt immer der Planer.</p>`,
+      <p class="small muted" ${planer ? 'hidden' : ''}>Ein Tausch gilt, sobald die andere Person annimmt und danach weiterhin alles besetzt ist. Sonst entscheidet der Planer. Andere Zeiten und Frei-Wünsche bestätigt immer der Planer.</p>`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Senden', kind: 'primary', value: 'ok' }],
     onOpen(root) {
       const upd = () => {
@@ -185,17 +188,17 @@ export async function propose(date) {
           const p = { kind: 'swap', by: me, with: f.with, date, mode: f.mode, withDate: f.mode === 'other' ? f.withDate : null };
           const B = name(plan, f.with);
           const lines = [];
-          if (f.mode === 'same') lines.push(`${day(date)}: du bekommst „${entryText(plan, date, f.with)}“, ${B} bekommt „${mine}“`);
+          if (f.mode === 'same') lines.push(`${day(date)}: ${du} bekommt „${entryText(plan, date, f.with)}“, ${B} bekommt „${mine}“`);
           else {
-            lines.push(`${day(date)}: ${B} übernimmt „${mine}“, du hast frei`);
+            lines.push(`${day(date)}: ${B} übernimmt „${mine}“, ${du} hat frei`);
             if (entryText(plan, date, f.with) !== 'kein Dienst' && entryText(plan, date, f.with) !== 'Frei') lines.push(`Achtung: ${B}s bisheriger Eintrag an diesem Tag („${entryText(plan, date, f.with)}“) wird ersetzt`);
             if (f.mode === 'other' && f.withDate) {
-              lines.push(`${day(f.withDate)}: du übernimmst „${entryText(plan, f.withDate, f.with)}“ von ${B}`);
-              if (!['kein Dienst', 'Frei'].includes(entryText(plan, f.withDate, me))) lines.push(`Achtung: dein bisheriger Eintrag an diesem Tag („${entryText(plan, f.withDate, me)}“) wird ersetzt`);
+              lines.push(`${day(f.withDate)}: ${du} übernimmt „${entryText(plan, f.withDate, f.with)}“ von ${B}`);
+              if (!['kein Dienst', 'Frei'].includes(entryText(plan, f.withDate, me))) lines.push(`Achtung: ${planer ? name(plan, me) + 's' : 'dein'} bisheriger Eintrag an diesem Tag („${entryText(plan, f.withDate, me)}“) wird ersetzt`);
             }
           }
           const g = f.mode === 'other' && !f.withDate ? [] : newGaps(plan, p);
-          root.querySelector('#preview').innerHTML = lines.map(esc).join('<br>') + (g.length ? `<br><span class="warn-text">⚠ Danach fehlt: ${esc(g.join(' · '))}. Der Planer muss bestätigen.</span>` : '');
+          root.querySelector('#preview').innerHTML = lines.map(esc).join('<br>') + (g.length ? `<br><span class="warn-text">⚠ Danach fehlt: ${esc(g.join(' · '))}${planer ? '' : '. Der Planer muss bestätigen'}.</span>` : '');
         }
       };
       root.addEventListener('change', (e) => {
@@ -209,10 +212,10 @@ export async function propose(date) {
       if (!v) return null;
       const f = formData(root);
       if (f.kind === 'swap' && !f.with) { toast('Niemand zum Tauschen da', 'error'); return false; }
-      if (f.kind === 'swap' && f.mode !== 'same' && (planEntry(plan, date, me) || {}).kind !== 'shift') { toast('Du hast an diesem Tag keinen Dienst zum Abgeben', 'error'); return false; }
+      if (f.kind === 'swap' && f.mode !== 'same' && (planEntry(plan, date, me) || {}).kind !== 'shift') { toast(planer ? 'An diesem Tag gibt es keinen Dienst zum Abgeben' : 'Du hast an diesem Tag keinen Dienst zum Abgeben', 'error'); return false; }
       if (f.kind === 'swap' && f.mode === 'other') {
         if (!f.withDate || f.withDate === date) { toast('Einen anderen Tag wählen', 'error'); return false; }
-        if (!isPublished(plan, f.withDate) || f.withDate < K.today()) { toast('Dieser Tag ist nicht veröffentlicht oder schon vorbei', 'error'); return false; }
+        if (!planer && (!isPublished(plan, f.withDate) || f.withDate < K.today())) { toast('Dieser Tag ist nicht veröffentlicht oder schon vorbei', 'error'); return false; }
         const r2 = planEntry(plan, f.withDate, f.with);
         if (!r2 || r2.kind !== 'shift') { toast(`${name(plan, f.with)} hat an diesem Tag keinen Dienst`, 'error'); return false; }
       }
@@ -226,6 +229,15 @@ export async function propose(date) {
   if (r.kind === 'swap') Object.assign(p, { kind: 'swap', with: r.with, mode: r.mode, withDate: r.mode === 'other' ? r.withDate : null });
   else Object.assign(p, { kind: 'change', change: r.kind === 'free' ? { kind: 'status', status: 'Frei' } : { kind: 'shift', start: r.start, end: r.end } });
   p.snap = snapshot(plan, p);
+  if (planer) {
+    App.plan.update((pl) => {
+      apply(pl, p, t);
+      pl.proposals = pl.proposals || {};
+      pl.proposals['p' + randomId(8)] = { ...p, status: 'erledigt', decidedBy: 'planer', reply: 'vom Planer getauscht', gaps: [] };
+    });
+    toast('Getauscht');
+    return;
+  }
   App.plan.update((pl) => { pl.proposals = pl.proposals || {}; pl.proposals['p' + randomId(8)] = p; });
   toast(p.kind === 'swap' ? `Anfrage an ${name(plan, p.with)} gesendet` : 'Vorschlag an den Planer gesendet');
 }
@@ -277,4 +289,10 @@ act('prop-reject', async ({ id }) => {
   });
   if (!r) return;
   update(id, (pl, p, t) => { pl.proposals[id] = { ...p, status: 'abgelehnt', decidedBy: 'planer', reply: r.reply.trim() || 'vom Planer abgelehnt', updatedAt: t }; });
+});
+
+act('planer-swap', ({ d, e }) => {
+  document.querySelectorAll('.modal-wrap').forEach((w) => w.remove());
+  document.body.classList.remove('modal-open');
+  propose(d, e);
 });
