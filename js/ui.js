@@ -22,13 +22,19 @@ document.addEventListener('click', (ev) => {
 
 // ---------- Hinweis unten ----------
 let toastTimer;
-export function toast(msg, kind = 'info') {
+export function toast(msg, kind = 'info', action) {
   let t = $('#toast');
   if (!t) { t = document.createElement('div'); t.id = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
   t.textContent = msg;
-  t.className = 'show ' + kind;
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toast-btn'; b.textContent = action.label;
+    b.addEventListener('click', () => { t.className = ''; action.fn(); });
+    t.appendChild(b);
+  }
+  t.className = 'show ' + kind + (action ? ' has-btn' : '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.className = ''; }, kind === 'error' ? 6000 : 2800);
+  toastTimer = setTimeout(() => { t.className = ''; }, kind === 'error' ? 6000 : action ? 7000 : 2800);
 }
 
 // ---------- Dialog ----------

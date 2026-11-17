@@ -311,6 +311,14 @@ table.yearview td { width: 12px; min-width: 12px; border-left: 1px solid var(--s
 #toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%) translateY(20px); background: #1b2430; color: #fff; padding: 10px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: .2s; z-index: 200; max-width: calc(100vw - 32px); font-size: .92rem; }
 #toast.show { opacity: 1; transform: translateX(-50%); }
 #toast.error { background: #a93226; }
+#toast.has-btn { pointer-events: auto; display: flex; align-items: center; gap: 12px; }
+.toast-btn { background: none; border: 1px solid rgba(255,255,255,.5); color: #fff; border-radius: 8px; padding: 4px 10px; font: inherit; cursor: pointer; }
+/* Ziehen & Tauschen */
+td[data-act="edit-entry"], td[data-act="edit-entry-m"], li[data-act="edit-entry"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+body.dnd-on, body.dnd-on * { cursor: grabbing !important; }
+.dnd-src { opacity: .45; }
+.dnd-over { outline: 3px dashed var(--accent, #2b6cb0); outline-offset: -3px; }
+.dnd-ghost { position: fixed; left: 0; top: 0; z-index: 300; pointer-events: none; background: var(--card, #fff); border: 1px solid #9ab; border-radius: 8px; padding: 4px 8px; box-shadow: 0 6px 18px rgba(0,0,0,.25); font-size: .85rem; opacity: .95; }
 @media (min-width: 760px) { #toast { bottom: 24px; } }
 
 /* ---------- Druck ----------

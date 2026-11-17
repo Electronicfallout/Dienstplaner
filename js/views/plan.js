@@ -151,7 +151,7 @@ function render(main) {
       </section></div>`;
   }
 
-  main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen. Events und Anmerkungen trägst du in den rechten Spalten bzw. beim Tag ein. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '<p class="hint">Tippe auf deinen Dienst, um mit jemandem zu tauschen oder eine andere Zeit vorzuschlagen.</p>');
+  main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen. Zum Tauschen einen Eintrag auf einen anderen ziehen (am Handy lange drücken). Events und Anmerkungen trägst du in den rechten Spalten bzw. beim Tag ein. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '<p class="hint">Tippe auf deinen Dienst, um mit jemandem zu tauschen oder eine andere Zeit vorzuschlagen.</p>');
 }
 
 export function diffBadge(d) {
