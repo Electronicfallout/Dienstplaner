@@ -6,6 +6,7 @@ import * as K from '../calc.js';
 import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished, eventsOn, coverageGaps } from '../model.js';
 import { cellHtml, editEntry, diffBadge } from './plan.js';
 import { LS } from '../storage.js';
+import { proposalsHtml } from '../proposals.js';
 
 // Zoom der Monatstabelle (mit zwei Fingern oder + / −), pro Gerät gemerkt
 const ZMIN = 0.4, ZMAX = 2;
@@ -59,6 +60,7 @@ function render(main) {
         ${admin ? '<button class="btn small ghost" data-act="export-xlsx">Excel</button>' : ''}
       </div>
     </div>
+    ${proposalsHtml(plan)}
     <div class="table-scroll pinch"><table class="plan month" style="zoom:${zoom}">
       <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>`).join('')}<th class="evcol">Events im Shop</th><th class="evcol">Anmerkung</th></tr></thead>
       <tbody>${days.map((d) => {
@@ -71,7 +73,8 @@ function render(main) {
             if (!employed(e, d)) return '<td class="off"></td>';
             if (!admin && !isPublished(plan, d)) return '<td class="muted">–</td>';
             const pe = planEntry(plan, d, e.id);
-            return `<td class="${e.id === meId ? 'me' : ''} ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${e.id}"` : ''}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
+            const mine = !admin && e.id === meId && d >= t;
+            return `<td class="${e.id === meId ? 'me' : ''} ${admin || mine ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${e.id}"` : mine ? `data-act="propose" data-d="${d}"` : ''}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
           }).join('')}
           <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${[hol && esc(hol), ...eventsOn(plan, d).map((e) => `<span class="${e.noPrint ? 'noprint' : ''}">${e.recurring ? '↻' : '🎲'} ${esc(e.title)}</span>`)].filter(Boolean).join(' · ')}</td>
           <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${day.note ? esc(day.note) : ''}</td>

@@ -100,6 +100,16 @@ export function describe(plan, p) {
   return `${A} gibt ${day(p.date)} (${txt(p.date, p.by)}) an ${B} und übernimmt dafür ${day(p.withDate)} (${txt(p.withDate, p.with)})`;
 }
 
+// Muss der Planer selbst entscheiden? Änderungen, angenommene Tausche mit Lücken,
+// und Tausch-Anfragen an den Planer selbst (z. B. an den Chef ohne eigenes Mitarbeiter-Login)
+function needsPlaner(plan, p) {
+  if (p.status === 'planer') return true;
+  if (p.status !== 'offen') return false;
+  if (p.kind === 'change') return true;
+  const w = plan.employees[p.with];
+  return p.kind === 'swap' && (p.with === App.cfg.empId || !!(w && w.noTimes));
+}
+
 const STATUS_TEXT = { offen: 'wartet', planer: 'wartet auf Planer', erledigt: 'übernommen', abgelehnt: 'abgelehnt', 'zurückgezogen': 'zurückgezogen' };
 
 // ---------- Anzeige im Wochenplan ----------
@@ -117,8 +127,9 @@ export function proposalsHtml(plan) {
       else if (!admin && p.status === 'offen' && open.includes(me)) rows.push(`<li><div class="grow">Vorschlag vom Planer: ${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}</div><div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${p.id}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${p.id}">Ablehnen</button></div></li>`);
       continue;
     }
-    if (admin && ((p.kind === 'change' && p.status === 'offen') || p.status === 'planer')) {
-      rows.push(`<li>${txt}<div class="btn-row"><button class="btn small primary" data-act="prop-confirm" data-id="${p.id}">Bestätigen</button><button class="btn small" data-act="prop-reject" data-id="${p.id}">Ablehnen</button></div></li>`);
+    if (admin && (needsPlaner(plan, p) || (p.kind === 'swap' && p.status === 'offen'))) {
+      const waits = !needsPlaner(plan, p) ? `<small class="muted">wartet noch auf ${esc(name(plan, p.with))}, du kannst aber gleich entscheiden</small>` : '';
+      rows.push(`<li>${txt.replace(/<\/div>$/, waits + '</div>')}<div class="btn-row"><button class="btn small primary" data-act="prop-confirm" data-id="${p.id}">Bestätigen</button><button class="btn small" data-act="prop-reject" data-id="${p.id}">Ablehnen</button></div></li>`);
     } else if (!admin && p.kind === 'swap' && p.with === me && p.status === 'offen') {
       rows.push(`<li>${txt}<div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${p.id}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${p.id}">Ablehnen</button></div></li>`);
     } else if (!admin && p.by === me && OPEN.includes(p.status)) {
@@ -144,7 +155,7 @@ export function proposalNotices(plan) {
       continue;
     }
     if (admin) {
-      if ((p.kind === 'change' && p.status === 'offen') || p.status === 'planer') todo.push({ icon: '✋', text: `Bitte entscheiden: ${text}`, sub: p.gaps && p.gaps.length ? `Danach fehlt: ${p.gaps.join(' · ')}` : '', view: 'plan', date: p.date });
+      if (needsPlaner(plan, p)) todo.push({ icon: '✋', text: `Bitte entscheiden: ${text}`, sub: p.gaps && p.gaps.length ? `Danach fehlt: ${p.gaps.join(' · ')}` : '', view: 'plan', date: p.date });
       else if (p.kind === 'swap' && p.status === 'erledigt' && !p.decidedBy) news.push({ at: p.updatedAt, icon: '🔁', text: `Getauscht: ${text}`, view: 'plan', date: p.date });
     } else {
       if (p.kind === 'swap' && p.with === me && p.status === 'offen') todo.push({ icon: '🔁', text: `${name(plan, p.by)} möchte mit dir tauschen`, sub: text, view: 'plan', date: p.date });
