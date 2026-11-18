@@ -194,6 +194,21 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
 }
 
 // Saldo (Plus-/Minusstunden) vom Startdatum bis einschließlich untilDate
+// Bis wann gerechnet wird: der heutige Tag zählt erst, wenn er erfasst ist oder der geplante Dienst vorbei ist
+export function countedUntil(plan, emp, times) {
+  const t = today();
+  const y = addDays(t, -1);
+  if (times && alive(times[t])) return t;
+  const r = resolve(plan, planEntry(plan, t, emp.id), emp, t);
+  if (r && r.type === 'shift' && r.end) {
+    const d = new Date();
+    const nowMin = d.getHours() * 60 + d.getMinutes();
+    const end = parseTime(r.end);
+    if (end !== null && end > parseTime(r.start) && nowMin >= end) return t;
+  }
+  return y;
+}
+
 export function saldoUntil(plan, emp, untilDate, times) {
   return saldoDetail(plan, emp, untilDate, times).saldo;
 }

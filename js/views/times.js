@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf, empDoc, loadEmployeeVaults } from '../app.js';
 import { esc, act, openModal, toast, formData } from '../ui.js';
 import * as K from '../calc.js';
-import { tracked, employeesSorted, planEntry, resolve, resolveTime, employed, monthStats, saldoDetail, alive, isPublished } from '../model.js';
+import { countedUntil, tracked, employeesSorted, planEntry, resolve, resolveTime, employed, monthStats, saldoDetail, alive, isPublished } from '../model.js';
 import { now } from '../store.js';
 import { diffBadge } from './plan.js';
 
@@ -29,8 +29,9 @@ function render(main) {
   const times = timesOf(emp.id);
   const t = K.today();
   const st = monthStats(plan, emp, y, m, times);
-  const stToday = monthStats(plan, emp, y, m, times, t);
-  const sd = saldoDetail(plan, emp, t, times);
+  const cu = countedUntil(plan, emp, times); // heute zählt erst nach Dienstende
+  const stToday = monthStats(plan, emp, y, m, times, cu);
+  const sd = saldoDetail(plan, emp, cu, times);
   const saldo = sd.saldo;
   const sg = (h) => `${h >= 0 ? '+' : ''}${K.fmtH(h)} h`;
 
@@ -55,9 +56,9 @@ function render(main) {
     ${accessNote}
     <div class="stats">
       <div class="stat"><span>Soll ${K.MONATE[m - 1]}</span><b>${K.fmtH(st.soll)} h</b></div>
-      <div class="stat"><span>Ist bis heute</span><b>${K.fmtH(stToday.istH + stToday.creditH)} h</b><small>Soll bis heute ${K.fmtH(stToday.soll)} h</small></div>
+      <div class="stat"><span>Ist bis ${cu === t ? 'heute' : 'gestern'}</span><b>${K.fmtH(stToday.istH + stToday.creditH)} h</b><small>Soll bis ${cu === t ? 'heute' : 'gestern'} ${K.fmtH(stToday.soll)} h</small></div>
       <div class="stat"><span>Monat</span><b class="${stToday.saldo >= 0 ? 'pos' : 'neg'}">${stToday.saldo >= 0 ? '+' : ''}${K.fmtH(stToday.saldo)} h</b>${stToday.bonusH ? `<small>davon Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}: +${K.fmtH(stToday.bonusH)} h</small>` : ''}</div>
-      <div class="stat"><span>Zeitkonto gesamt</span><b class="${saldo >= 0 ? 'pos' : 'neg'}">${saldo >= 0 ? '+' : ''}${K.fmtH(saldo)} h</b><small>Gearbeitet ${sg(sd.arbeitH)} · Zuschlag ${sg(sd.bonusH)}${sd.startH ? ` · alt ${sg(sd.startH)}` : ''}<br>Plus-/Minusstunden bis heute${admin ? `<br><button class="link" data-act="t-carry" data-e="${emp.id}">Alte Überstunden nachtragen${Number(emp.zaStartH) ? ` (${Number(emp.zaStartH) > 0 ? '+' : ''}${K.fmtH(Number(emp.zaStartH))} h)` : ''}</button>` : ''}</small></div>
+      <div class="stat"><span>Zeitkonto gesamt</span><b class="${saldo >= 0 ? 'pos' : 'neg'}">${saldo >= 0 ? '+' : ''}${K.fmtH(saldo)} h</b><small>Gearbeitet ${sg(sd.arbeitH)} · Zuschlag ${sg(sd.bonusH)}${sd.startH ? ` · alt ${sg(sd.startH)}` : ''}<br>Plus-/Minusstunden bis ${cu === t ? 'heute' : 'gestern'}${admin ? `<br><button class="link" data-act="t-carry" data-e="${emp.id}">Alte Überstunden nachtragen${Number(emp.zaStartH) ? ` (${Number(emp.zaStartH) > 0 ? '+' : ''}${K.fmtH(Number(emp.zaStartH))} h)` : ''}</button>` : ''}</small></div>
     </div>
     ${!admin && todayPlan && todayPlan.type === 'shift' && !todayRec && y === td.y && m === td.m ? `
       <div class="quick">
@@ -79,9 +80,9 @@ function render(main) {
           <td><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(x.date)}</td><td>${pl}</td><td>${rec}${note}</td>
           <td class="num">${h ? K.fmtH(h) : ''}${diff ? `<small>${diffBadge(diff)}</small>` : ''}${x.bonus ? `<small title="Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}">+${K.fmtH(x.bonus)} Z</small>` : ''}</td></tr>`;
       }).join('')}</tbody>
-      <tfoot><tr><td colspan="3">Summe Ist / Soll<small>inkl. Feiertag, Urlaub, Zeitausgleich, Krankenstand</small></td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b><small>/ ${K.fmtH(st.soll)}</small>${diffBadge(st.istH + st.creditH - st.soll) ? `<small>${diffBadge(st.istH + st.creditH - st.soll)}</small>` : ''}${st.bonusH ? `<small>+${K.fmtH(st.bonusH)} Z</small>` : ''}</td></tr></tfoot>
+      <tfoot><tr><td colspan="3">Summe Ist / Soll</td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b><small>/ ${K.fmtH(st.soll)}</small>${diffBadge(st.istH + st.creditH - st.soll) ? `<small>${diffBadge(st.istH + st.creditH - st.soll)}</small>` : ''}${st.bonusH ? `<small>+${K.fmtH(st.bonusH)} Z</small>` : ''}</td></tr></tfoot>
     </table></div>
-    <p class="hint">${admin ? 'Ist = erfasste Zeit, sonst die geplante. ' : 'Tippe auf einen Tag, um deine tatsächliche Zeit einzutragen. Ohne Eintrag zählt die geplante Zeit. '}Ab ${esc(plan.settings.pauseAfterH)} Stunden werden automatisch ${esc(plan.settings.pauseMin)} Minuten Pause abgezogen. Arbeit ab ${esc(plan.settings.nightFrom || '21:00')} zählt mit ${K.fmtH(Number(plan.settings.nightFactor ?? 1.5))}: Der Aufschlag (Z) kommt getrennt aufs Zeitkonto.</p>`;
+    <p class="hint">${admin ? 'Ist = erfasste Zeit, sonst die geplante. ' : 'Tippe auf einen Tag, um deine tatsächliche Zeit einzutragen. Ohne Eintrag zählt die geplante Zeit. '}Feiertage, Urlaub, Zeitausgleich und Krankenstand zählen bei Ist mit. Der heutige Tag zählt erst, wenn er erfasst oder der Dienst vorbei ist. Ab ${esc(plan.settings.pauseAfterH)} Stunden werden automatisch ${esc(plan.settings.pauseMin)} Minuten Pause abgezogen. Arbeit ab ${esc(plan.settings.nightFrom || '21:00')} zählt mit ${K.fmtH(Number(plan.settings.nightFactor ?? 1.5))}: Der Aufschlag (Z) kommt getrennt aufs Zeitkonto.</p>`;
 
   const sel = main.querySelector('[data-change="t-emp"]');
   if (sel) sel.addEventListener('change', () => { App.tEmp = sel.value; render(main); });
