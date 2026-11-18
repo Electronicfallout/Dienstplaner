@@ -182,6 +182,7 @@ export async function propose(date, planerFor = null) {
   const r = await openModal({
     title: planer ? `${name(plan, me)} · ${day(date)}: ${mine}` : `${day(date)}: ${mine}`,
     body: `
+      ${!planer && date <= K.today() && !(plan.employees[me] || {}).noTimes ? `<p><button class="link" type="button" data-act="plan-time" data-d="${date}">⏱ Heutige Arbeitszeit eintragen</button></p>` : ''}
       <div class="seg" ${planer ? 'hidden' : ''}>
         <label><input type="radio" name="kind" value="swap" checked><span>Mit jemandem tauschen</span></label>
         <label><input type="radio" name="kind" value="change"><span>Andere Zeit</span></label>

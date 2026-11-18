@@ -119,8 +119,9 @@ function render(main) {
     const pe = planEntry(plan, d, e.id);
     return cellHtml(resolve(plan, pe, e, d), pe);
   };
-  const editAttr = (d, e) => (admin ? `data-act="edit-entry" data-d="${d}" data-e="${e.id}"` : (e.id === meId && isPublished(plan, d) && d >= t ? `data-act="propose" data-d="${d}"` : ''));
-  const canEdit = (d, e) => admin || (e.id === meId && isPublished(plan, d) && d >= t);
+  const myAct = (d, e) => myCellAct(plan, d, e, meId);
+  const editAttr = (d, e) => (admin ? `data-act="edit-entry" data-d="${d}" data-e="${e.id}"` : myAct(d, e));
+  const canEdit = (d, e) => admin || !!myAct(d, e);
   const dayAttr = (d) => (admin ? `data-act="edit-day" data-d="${d}"` : '');
 
   let body;
@@ -151,7 +152,15 @@ function render(main) {
       </section></div>`;
   }
 
-  main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen. Zum Tauschen einen Eintrag auf einen anderen ziehen (am Handy lange drücken). Events und Anmerkungen trägst du in den rechten Spalten bzw. beim Tag ein. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '<p class="hint">Tippe auf deinen Dienst, um mit jemandem zu tauschen oder eine andere Zeit vorzuschlagen.</p>');
+  main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen. Zum Tauschen einen Eintrag auf einen anderen ziehen (am Handy lange drücken). Events und Anmerkungen trägst du in den rechten Spalten bzw. beim Tag ein. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '<p class="hint">Tippe auf deinen Dienst: ab heute zum Tauschen oder für eine andere Zeit, an vergangenen Tagen zum Eintragen deiner Arbeitszeit.</p>');
+}
+
+// Eigene Zelle (Mitarbeiter): ab heute tauschen/vorschlagen, vergangene Tage Arbeitszeit eintragen
+export function myCellAct(plan, d, e, meId) {
+  if (e.id !== meId || !isPublished(plan, d)) return '';
+  const t = K.today();
+  if (d >= t) return `data-act="propose" data-d="${d}"`;
+  return e.noTimes ? '' : `data-act="plan-time" data-d="${d}"`;
 }
 
 export function diffBadge(d) {
@@ -335,7 +344,7 @@ export async function editEntry(date, empId) {
     <p class="calc" id="calc"></p>
     ${recorded ? `<p class="small muted">Vom Mitarbeiter erfasst: ${recorded.status ? esc(recorded.status) : `${esc(recorded.start)}–${esc(recorded.end)}`}</p>` : ''}
     ${pe && pe.source === 'vorlage' ? '<p class="small muted">Aktuell aus dem fixen Wochenplan.</p>' : ''}
-    <p><button class="link" type="button" data-act="planer-swap" data-d="${date}" data-e="${empId}">⇄ Mit jemandem tauschen</button></p>
+    <p class="btn-row"><button class="link" type="button" data-act="planer-swap" data-d="${date}" data-e="${empId}">⇄ Mit jemandem tauschen</button>${!emp.noTimes && date <= K.today() ? `<button class="link" type="button" data-act="plan-time" data-d="${date}" data-e="${empId}">⏱ Arbeitszeit eintragen</button>` : ''}</p>
     ${pe && pe.source === 'feiertag' ? `<p class="small muted">Feiertag: ${esc(pe.note)}</p>` : ''}`;
 
   await openModal({

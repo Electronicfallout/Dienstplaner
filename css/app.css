@@ -236,6 +236,13 @@ table.times .num small { display: block; }
 table.times tr.today td { background: var(--today); }
 table.times tr.sat td { background: var(--sat); }
 table.times tfoot td { background: var(--surface-2); font-weight: 600; }
+table.times { width: 100%; }
+table.times .num .diff { margin-left: 0; }
+@media (max-width: 600px) {
+  table.times { font-size: .85rem; }
+  table.times th, table.times td { padding: 6px 5px; overflow-wrap: anywhere; }
+  table.times td:first-child { white-space: nowrap; }
+}
 .quick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--accent-soft); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
 .quick span { flex: 1 1 200px; }
 .notice { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: .9rem; }

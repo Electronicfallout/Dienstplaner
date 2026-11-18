@@ -66,7 +66,7 @@ function render(main) {
         <button class="btn" data-act="t-edit" data-d="${t}">Andere Zeit</button>
       </div>` : ''}
     <div class="table-scroll"><table class="times">
-      <thead><tr><th>Tag</th><th>Geplant</th><th>Erfasst</th><th class="num">h</th><th class="num">Diff</th></tr></thead>
+      <thead><tr><th>Tag</th><th>Geplant</th><th>Erfasst</th><th class="num">h</th></tr></thead>
       <tbody>${st.tage.map((x) => {
         const wd = K.weekday(x.date);
         const pl = !admin && !isPublished(plan, x.date) ? '<span class="muted">Entwurf</span>' : x.pr ? (x.pr.type === 'shift' ? `${esc(x.pr.text)} <small>${K.fmtH(x.pr.workH)} h</small>` : esc(x.pr.text)) : '';
@@ -77,9 +77,9 @@ function render(main) {
         if (!x.pr && !x.tr && wd === 6) return '';
         return `<tr class="${x.date === t ? 'today' : ''} ${canEdit ? 'clickable' : ''} ${wd === 5 ? 'sat' : ''}" ${canEdit ? `data-act="t-edit" data-d="${x.date}"` : ''}>
           <td><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(x.date)}</td><td>${pl}</td><td>${rec}${note}</td>
-          <td class="num">${h ? K.fmtH(h) : ''}${x.bonus ? `<small title="Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}">+${K.fmtH(x.bonus)} Z</small>` : ''}</td><td class="num">${diff ? diffBadge(diff) : ''}</td></tr>`;
+          <td class="num">${h ? K.fmtH(h) : ''}${diff ? `<small>${diffBadge(diff)}</small>` : ''}${x.bonus ? `<small title="Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}">+${K.fmtH(x.bonus)} Z</small>` : ''}</td></tr>`;
       }).join('')}</tbody>
-      <tfoot><tr><td colspan="3">Summe (Ist inkl. Feiertag/Urlaub/ZA/Krankenstand) / Soll</td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b>${st.bonusH ? `<small>+${K.fmtH(st.bonusH)} Z</small>` : ''}</td><td class="num">${K.fmtH(st.soll)}</td></tr></tfoot>
+      <tfoot><tr><td colspan="3">Summe Ist / Soll<small>inkl. Feiertag, Urlaub, ZA, Krankenstand</small></td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b><small>/ ${K.fmtH(st.soll)}</small>${diffBadge(st.istH + st.creditH - st.soll) ? `<small>${diffBadge(st.istH + st.creditH - st.soll)}</small>` : ''}${st.bonusH ? `<small>+${K.fmtH(st.bonusH)} Z</small>` : ''}</td></tr></tfoot>
     </table></div>
     <p class="hint">${admin ? 'Ist = erfasste Zeit, sonst die geplante. ' : 'Tippe auf einen Tag, um deine tatsächliche Zeit einzutragen. Ohne Eintrag zählt die geplante Zeit. '}Ab ${esc(plan.settings.pauseAfterH)} Stunden werden automatisch ${esc(plan.settings.pauseMin)} Minuten Pause abgezogen. Arbeit ab ${esc(plan.settings.nightFrom || '21:00')} zählt mit ${K.fmtH(Number(plan.settings.nightFactor ?? 1.5))}: Der Aufschlag (Z) kommt getrennt aufs Zeitkonto.</p>`;
 
@@ -105,7 +105,21 @@ act('t-asplanned', ({ d }) => {
   toast('Erfasst: ' + r.text);
 });
 
-act('t-edit', async ({ d }) => {
+// Aus dem Dienstplan: Arbeitszeit für einen Tag eintragen (Planer: für die gewählte Person)
+act('plan-time', async ({ d, e }) => {
+  document.querySelectorAll('.modal-wrap').forEach((w) => w.remove());
+  document.body.classList.remove('modal-open');
+  if (isAdmin() && e) App.tEmp = e;
+  const emp = currentEmp();
+  if (!emp || emp.noTimes) return;
+  if (!empDoc(emp.id)) { toast(isAdmin() ? `Die Zeiten von ${emp.name} sind auf diesem Gerät noch nicht geöffnet (Tab „Zeiten“).` : 'Zeiten sind noch nicht geladen', 'error'); return; }
+  await editTime(d);
+  App.rerender && App.rerender();
+});
+
+act('t-edit', ({ d }) => editTime(d));
+
+async function editTime(d) {
   const plan = App.plan.obj;
   const emp = currentEmp();
   const doc = empDoc(emp.id);
@@ -155,7 +169,7 @@ act('t-edit', async ({ d }) => {
       return 'ok';
     },
   });
-});
+}
 
 registerView('times', { title: 'Zeiten', icon: '⏱️', roles: ['admin', 'employee'], render });
 

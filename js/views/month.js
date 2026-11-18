@@ -4,7 +4,7 @@ import { App, registerView, isAdmin, timesOf } from '../app.js';
 import { esc, act, loadScript, toast } from '../ui.js';
 import * as K from '../calc.js';
 import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished, eventsOn, coverageGaps } from '../model.js';
-import { cellHtml, editEntry, diffBadge } from './plan.js';
+import { cellHtml, editEntry, diffBadge, myCellAct } from './plan.js';
 import { LS } from '../storage.js';
 import { proposalsHtml } from '../proposals.js';
 
@@ -73,8 +73,8 @@ function render(main) {
             if (!employed(e, d)) return '<td class="off"></td>';
             if (!admin && !isPublished(plan, d)) return '<td class="muted">–</td>';
             const pe = planEntry(plan, d, e.id);
-            const mine = !admin && e.id === meId && d >= t;
-            return `<td class="${e.id === meId ? 'me' : ''} ${admin || mine ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${e.id}"` : mine ? `data-act="propose" data-d="${d}"` : ''}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
+            const mine = admin ? '' : myCellAct(plan, d, e, meId);
+            return `<td class="${e.id === meId ? 'me' : ''} ${admin || mine ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${e.id}"` : mine}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
           }).join('')}
           <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${[hol && esc(hol), ...eventsOn(plan, d).map((e) => `<span class="${e.noPrint ? 'noprint' : ''}">${e.recurring ? '↻' : '🎲'} ${esc(e.title)}</span>`)].filter(Boolean).join(' · ')}</td>
           <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${day.note ? esc(day.note) : ''}</td>
