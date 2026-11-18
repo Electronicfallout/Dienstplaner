@@ -154,6 +154,7 @@ async function editTime(d) {
       ...(cur ? [{ label: 'Löschen', value: 'del', kind: 'ghost' }] : []),
       { label: 'Abbrechen', value: null },
       ...(zaOk ? [{ label: 'Zeitausgleich bestätigen', value: 'za', kind: plannedZA ? 'primary' : '' }] : []),
+      ...(K.weekday(d) < 5 && !plannedZA ? [{ label: 'Ersatzfrei Samstag', value: 'efs' }] : []),
       ...(plannedZA ? [] : [{ label: 'Speichern', value: 'save', kind: 'primary' }]),
     ],
     onOpen(root) {
@@ -171,6 +172,7 @@ async function editTime(d) {
       if (!v) return null;
       const t = now();
       if (v === 'del') { doc.update((o) => { o.times[d] = { deleted: true, updatedAt: t }; }); return 'ok'; }
+      if (v === 'efs') { doc.update((o) => { o.times[d] = { status: 'Ersatzfrei Sa', updatedAt: t, ...(isAdmin() ? { byAdmin: true } : {}) }; }); toast('Ersatzfrei Samstag eingetragen: das Soll zählt am Samstag dieser Woche'); return 'ok'; }
       if (v === 'za') { doc.update((o) => { o.times[d] = { status: 'ZA', updatedAt: t, ...(isAdmin() ? { byAdmin: true } : {}) }; }); toast('Zeitausgleich bestätigt'); return 'ok'; }
       const f = formData(root);
       if (K.parseTime(f.start) === null || K.parseTime(f.end) === null) { toast('Beginn und Ende eingeben', 'error'); return false; }
