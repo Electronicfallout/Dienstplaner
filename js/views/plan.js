@@ -3,7 +3,7 @@
 import { App, registerView, isAdmin, timesOf } from '../app.js';
 import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
-import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, employed, alive, setEntry, isPublished, eventsOn, recurringOn, recurringText, coverageGaps } from '../model.js';
+import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, sollAt, employed, alive, setEntry, isPublished, eventsOn, recurringOn, recurringText, coverageGaps } from '../model.js';
 import { now } from '../store.js';
 import { proposalsHtml } from '../proposals.js';
 import '../saturday.js';
@@ -106,7 +106,7 @@ function render(main) {
     let h = 0, soll = 0, credit = 0;
     for (let i = 0; i < 7; i++) {
       const d = K.addDays(mon, i);
-      soll += sollDay(e, d, plan.settings);
+      soll += sollAt(plan, e, d);
       if (!visible(d)) continue;
       const r = resolve(plan, planEntry(plan, d, e.id), e, d);
       if (r) { h += r.workH; credit += r.creditH; }

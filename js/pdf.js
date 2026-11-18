@@ -3,13 +3,13 @@
 import { App, isAdmin } from './app.js';
 import { act, openModal, toast, loadScript, formData } from './ui.js';
 import * as K from './calc.js';
-import { employeesSorted, planEntry, resolve, employed, sollDay, monthStats, alive, isPublished, eventsOn } from './model.js';
+import { employeesSorted, planEntry, resolve, employed, sollDay, sollAt, monthStats, alive, isPublished, eventsOn } from './model.js';
 import { LS } from './storage.js';
 
 // Standardschrift kennt keine Emojis: nur druckbare Zeichen behalten
 const clean = (s) => String(s ?? '').replace(/[^\u0000-ɏ–—‘-„€]/g, '').replace(/\s+/g, ' ').trim();
 
-const STATUS_FILL = { Urlaub: [214, 240, 222], ZA: [250, 236, 204], Krankenstand: [246, 214, 210], Ersatzfrei: [229, 221, 243], Feiertag: [220, 228, 243], Frei: [236, 238, 240] };
+const STATUS_FILL = { Urlaub: [214, 240, 222], ZA: [250, 236, 204], Krankenstand: [246, 214, 210], Ersatzfrei: [229, 221, 243], 'Ersatzfrei Sa': [229, 221, 243], Feiertag: [220, 228, 243], Frei: [236, 238, 240] };
 
 function hexRgb(h) {
   const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h || '');
@@ -23,7 +23,7 @@ function cellFor(plan, d, e) {
   if (!r) return { text: '' };
   const note = r.note && r.type !== 'note' ? `\n${clean(r.note)}` : '';
   if (r.type === 'shift') return { text: `${r.start}–${r.end}${note}`, fill: hexRgb(r.color) };
-  if (r.type === 'status') return { text: r.status + note, fill: STATUS_FILL[r.status] };
+  if (r.type === 'status') return { text: r.text + note, fill: STATUS_FILL[r.status] };
   return { text: clean(r.text), italic: true };
 }
 
@@ -55,7 +55,7 @@ function buildWeek(plan) {
     let h = 0, soll = 0;
     for (let i = 0; i < 7; i++) {
       const d = K.addDays(mon, i);
-      soll += sollDay(e, d, plan.settings);
+      soll += sollAt(plan, e, d);
       if (!isAdmin() && !isPublished(plan, d)) continue;
       const r = resolve(plan, planEntry(plan, d, e.id), e, d);
       if (r) h += r.workH + r.creditH;

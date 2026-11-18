@@ -48,6 +48,22 @@ export function sollDay(emp, date, settings) {
   return dayTarget(emp, settings);
 }
 
+// Soll unter Berücksichtigung von „Ersatzfrei Samstag“: der freie Wochentag hat kein Soll,
+// dafür bekommt der Samstag derselben Woche das Tagessoll (auch wenn Samstag sonst kein Arbeitstag ist).
+const EFS = 'Ersatzfrei Sa';
+function isEFS(plan, emp, d) { const pe = planEntry(plan, d, emp.id); return !!(pe && pe.kind === 'status' && pe.status === EFS); }
+export function sollAt(plan, emp, date, settings = plan.settings) {
+  const base = sollDay(emp, date, settings);
+  if (!employed(emp, date) || emp.noTimes) return 0;
+  if (isEFS(plan, emp, date)) return 0;
+  if (weekday(date) === 5) {
+    let n = 0;
+    for (let i = 1; i <= 5; i++) { const d = addDays(date, -i); if (employed(emp, d) && isEFS(plan, emp, d)) n++; }
+    if (n) return base + n * dayTarget(emp, settings);
+  }
+  return base;
+}
+
 // Was steht im Plan? Liefert ein Eintragsobjekt oder null.
 // Quelle: 'plan' (ausdrücklich eingetragen), 'vorlage' (fixer Wochenplan), 'feiertag'
 // Stunden des Dienstes laut fixem Wochenplan an diesem Tag (für Zeitausgleich), sonst null
@@ -166,7 +182,7 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
     if (untilDate && d > untilDate) break;
     const pe = planEntry(plan, d, emp.id);
     const pr = resolve(plan, pe, emp, d);
-    const soll = sollDay(emp, d, s);
+    const soll = sollAt(plan, emp, d, s);
     const tr = times ? resolveTime(times[d], s) : null;
     const planWork = pr ? pr.workH : 0;
     // vom Mitarbeiter als Zeitausgleich bestätigt, obwohl ein Dienst geplant war: Dienststunden gelten als ZA

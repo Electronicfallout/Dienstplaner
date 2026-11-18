@@ -7,6 +7,7 @@ export const MONATE = ['Jänner', 'Februar', 'März', 'April', 'Mai', 'Juni', 'J
 // Status, die keine Arbeitszeit sind. credit: wie viele Stunden angerechnet werden.
 //  'tag'  = Tagessoll (Wochenstunden / Arbeitstage pro Woche)
 //  'null' = 0 Stunden
+//  'Ersatzfrei Sa' (credit null): an dem Tag kein Soll, dafür Soll am Samstag derselben Woche (siehe sollAt)
 //  'za'   = Tagessoll in den Stunden (wie Urlaub), das Zeitkonto sinkt aber um diesen Tag
 export const STATUS = {
   'Frei':         { credit: 'null', farbe: '#9aa3ad', kurz: 'F' },
@@ -14,6 +15,8 @@ export const STATUS = {
   'ZA':           { credit: 'za',    farbe: '#c48a10', kurz: 'ZA', label: 'Zeitausgleich' },
   'Krankenstand': { credit: 'tag',  farbe: '#c0392b', kurz: 'K' },
   'Ersatzfrei':   { credit: 'tag',  farbe: '#7d5bbe', kurz: 'EF' },
+  // freier Wochentag als Ausgleich für den Samstagsdienst derselben Woche: das Tagessoll wandert auf den Samstag
+  'Ersatzfrei Sa': { credit: 'null', farbe: '#9b6fd6', kurz: 'EFS', label: 'Ersatzfrei Samstag' },
   'Feiertag':     { credit: 'tag',  farbe: '#5b7dbe', kurz: 'FT' },
 };
 
