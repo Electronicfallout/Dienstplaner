@@ -196,8 +196,8 @@ export async function propose(date, planerFor = null) {
         </div>
         <label class="field" data-m="other" hidden><span>Welchen Tag übernimmt ${planer ? esc(name(plan, me)) : 'du'}?</span><input type="date" name="withDate" value="${K.addDays(date, 1)}"></label>
         ${planer ? `<div class="seg">
-          <label><input type="radio" name="how" value="now" checked><span>sofort tauschen</span></label>
-          <label><input type="radio" name="how" value="ask"><span>als Vorschlag schicken (Bestätigung nötig)</span></label>
+          <label><input type="radio" name="how" value="ask" checked><span>als Vorschlag schicken (Mitarbeiter bekommen eine Nachricht und bestätigen)</span></label>
+          <label><input type="radio" name="how" value="now"><span>sofort tauschen, ohne Rückfrage</span></label>
         </div>` : ''}
         <p class="calc" id="preview"></p>
       </div>
