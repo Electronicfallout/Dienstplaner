@@ -237,6 +237,9 @@ table.times tr.today td { background: var(--today); }
 table.times tr.sat td { background: var(--sat); }
 table.times tfoot td { background: var(--surface-2); font-weight: 600; }
 table.times { width: 100%; }
+.saldo-detail { margin-top: 12px; padding: 10px 12px; }
+.saldo-detail summary { cursor: pointer; }
+.saldo-detail table { margin-top: 8px; }
 table.times .num .diff { margin-left: 0; }
 @media (max-width: 600px) {
   table.times { font-size: .85rem; }

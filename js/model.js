@@ -220,15 +220,24 @@ export function saldoDetail(plan, emp, untilDate, times) {
   if (emp.startDate && emp.startDate > from) from = emp.startDate;
   const startH = Number(emp.zaStartH) || 0;
   let arbeitH = 0, bonusH = 0;
-  if (from > untilDate) return { saldo: startH, startH, arbeitH, bonusH };
+  const weeks = []; // Aufschlüsselung pro Woche
+  if (from > untilDate) return { saldo: startH, startH, arbeitH, bonusH, from, weeks };
   let { y, m } = parseIso(from);
   const end = parseIso(untilDate);
   while (y < end.y || (y === end.y && m <= end.m)) {
     const st = monthStats(plan, emp, y, m, times, untilDate);
-    for (const t of st.tage) if (t.date >= from) { arbeitH += t.ist + t.credit - t.za - t.soll; bonusH += t.bonus; } // ZA zählt als Stunden, verbraucht aber das Zeitkonto
+    for (const t of st.tage) {
+      if (t.date < from) continue;
+      arbeitH += t.ist + t.credit - t.za - t.soll; bonusH += t.bonus; // ZA zählt als Stunden, verbraucht aber das Zeitkonto
+      const wk = addDays(t.date, -weekday(t.date));
+      let w = weeks[weeks.length - 1];
+      if (!w || w.mon !== wk) { w = { mon: wk, soll: 0, ist: 0, credit: 0, za: 0, bonus: 0, offen: 0 }; weeks.push(w); }
+      w.soll += t.soll; w.ist += t.ist; w.credit += t.credit; w.za += t.za; w.bonus += t.bonus;
+      if (times && !t.tr && t.pr && t.pr.type === 'shift') w.offen++;
+    }
     m++; if (m > 12) { m = 1; y++; }
   }
-  return { saldo: startH + arbeitH + bonusH, startH, arbeitH, bonusH };
+  return { saldo: startH + arbeitH + bonusH, startH, arbeitH, bonusH, from, weeks };
 }
 
 // Datum + k Monate (Tag wird auf das Monatsende gekürzt, z. B. 31.01. + 1 Monat = 28.02.)

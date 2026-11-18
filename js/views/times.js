@@ -82,6 +82,12 @@ function render(main) {
       }).join('')}</tbody>
       <tfoot><tr><td colspan="3">Summe Ist / Soll</td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b><small>/ ${K.fmtH(st.soll)}</small>${diffBadge(st.istH + st.creditH - st.soll) ? `<small>${diffBadge(st.istH + st.creditH - st.soll)}</small>` : ''}${st.bonusH ? `<small>+${K.fmtH(st.bonusH)} Z</small>` : ''}</td></tr></tfoot>
     </table></div>
+    <details class="card saldo-detail"><summary><b>Wie kommt das Zeitkonto zustande?</b></summary>
+      <p class="small muted">Gerechnet ab ${K.fmtDate(sd.from, true)}${emp.startDate ? '' : ' (kein Eintrittsdatum hinterlegt)'} bis ${K.fmtDate(cu, true)}. Pro Woche: Ist (gearbeitet plus Feiertag/Urlaub/Krankenstand/Zeitausgleich) minus Soll, minus Zeitausgleich, plus Zuschlag.</p>
+      <table class="times"><thead><tr><th>Woche</th><th class="num">Soll</th><th class="num">Ist</th><th class="num">ZA</th><th class="num">±</th></tr></thead>
+      <tbody>${sd.weeks.map((w) => { const d = w.ist + w.credit - w.za - w.soll + w.bonus; return `<tr><td>KW ${K.isoWeek(w.mon)}<small>${K.fmtDate(w.mon)}${w.offen ? ` · ${w.offen} Tag${w.offen > 1 ? 'e' : ''} nicht erfasst` : ''}</small></td><td class="num">${K.fmtH(w.soll)}</td><td class="num">${K.fmtH(w.ist + w.credit)}${w.bonus ? `<small>+${K.fmtH(w.bonus)} Z</small>` : ''}</td><td class="num">${w.za ? '−' + K.fmtH(w.za) : ''}</td><td class="num ${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${K.fmtH(d)}</td></tr>`; }).join('')}</tbody>
+      <tfoot>${sd.startH ? `<tr><td colspan="4">Alte Überstunden</td><td class="num">${sg(sd.startH)}</td></tr>` : ''}<tr><td colspan="4">Zeitkonto</td><td class="num"><b>${sg(saldo)}</b></td></tr></tfoot></table>
+    </details>
     <p class="hint">${admin ? 'Ist = erfasste Zeit, sonst die geplante. ' : 'Tippe auf einen Tag, um deine tatsächliche Zeit einzutragen. Ohne Eintrag zählt die geplante Zeit. '}Feiertage, Urlaub, Zeitausgleich und Krankenstand zählen bei Ist mit. Der heutige Tag zählt erst, wenn er erfasst oder der Dienst vorbei ist. Ab ${esc(plan.settings.pauseAfterH)} Stunden werden automatisch ${esc(plan.settings.pauseMin)} Minuten Pause abgezogen. Arbeit ab ${esc(plan.settings.nightFrom || '21:00')} zählt mit ${K.fmtH(Number(plan.settings.nightFactor ?? 1.5))}: Der Aufschlag (Z) kommt getrennt aufs Zeitkonto.</p>`;
 
   const sel = main.querySelector('[data-change="t-emp"]');
