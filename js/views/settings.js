@@ -6,6 +6,7 @@ import * as K from '../calc.js';
 import * as C from '../crypto.js';
 import { employeesSorted, shiftsSorted, alive, dayTarget, recurringText, shiftColor, SHIFT_COLORS, DEFAULT_OPEN } from '../model.js';
 import { importIcs } from '../ics.js';
+import { APP_VERSION } from '../version.js';
 import { now, COLORS, merge, clone } from '../store.js';
 import { makeInvite, redirectUri } from '../storage.js';
 import { importExcel } from '../import-excel.js';
@@ -92,6 +93,7 @@ function render(main) {
     <section class="card">
       <div class="card-head"><h2>Verbindung und Sicherheit</h2></div>
       <p>${isDropbox ? `Verbunden mit Dropbox (Ordner <b>Apps/…/</b> der Dropbox-App). Zuletzt synchronisiert: ${App.plan.lastSync ? new Date(App.plan.lastSync).toLocaleString('de-AT') : 'noch nie'}.` : '<b>Nur auf diesem Gerät.</b> Zum Teilen mit dem Team zuerst mit Dropbox verbinden.'}</p>
+      <p class="small muted">App-Version: ${APP_VERSION.replace('dp-', '')}</p>
       <div class="btn-row">
         ${isDropbox ? '' : '<button class="btn primary" data-act="to-dropbox">Mit Dropbox verbinden</button>'}
         <button class="btn" data-act="admin-pw">Planer-Passwort ändern</button>
