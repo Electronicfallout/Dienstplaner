@@ -1,6 +1,6 @@
 // Abgeleitete Werte: was steht an einem Tag, wie viele Stunden zählen, Soll/Ist, Urlaub.
 
-import { STATUS, parseTime, weekday, holidayName, workHours, autoPauseMin, durationMin, monthDays, parseIso, dayNum, iso, today, addDays } from './calc.js';
+import { STATUS, statusLabel, parseTime, weekday, holidayName, workHours, autoPauseMin, durationMin, monthDays, parseIso, dayNum, iso, today, addDays } from './calc.js';
 
 export function alive(r) { return r && !r.deleted; }
 
@@ -50,6 +50,16 @@ export function sollDay(emp, date, settings) {
 
 // Was steht im Plan? Liefert ein Eintragsobjekt oder null.
 // Quelle: 'plan' (ausdrücklich eingetragen), 'vorlage' (fixer Wochenplan), 'feiertag'
+// Stunden des Dienstes laut fixem Wochenplan an diesem Tag (für Zeitausgleich), sonst null
+export function templateShiftH(plan, emp, date) {
+  const t = plan.template[emp.id];
+  if (!alive(t) || (t.validFrom && date < t.validFrom) || (t.validTo && date > t.validTo)) return null;
+  const v = t.days && t.days[weekday(date)];
+  const sh = v && plan.shifts[v];
+  if (!sh || !alive(sh)) return null;
+  return workHours(sh.start, sh.end, plan.settings) || null;
+}
+
 export function planEntry(plan, date, empId) {
   const e = plan.entries[entryKey(date, empId)];
   if (alive(e)) return { ...e, source: 'plan' };
@@ -117,8 +127,9 @@ function resolveRaw(plan, entry, emp, date) {
     const def = STATUS[entry.status] || { credit: 'null' };
     let credit = 0;
     if (entry.credit !== undefined && entry.credit !== null && entry.credit !== '') credit = Number(entry.credit);
+    else if (def.credit === 'za' && emp && templateShiftH(plan, emp, date) !== null) credit = templateShiftH(plan, emp, date);
     else if (def.credit === 'tag' || def.credit === 'za') credit = emp ? sollDay(emp, date, s) : 0;
-    return { type: 'status', status: entry.status, workH: 0, creditH: credit, text: entry.status, note: entry.note };
+    return { type: 'status', status: entry.status, workH: 0, creditH: credit, text: statusLabel(entry.status), note: entry.note };
   }
   if (entry.kind === 'note') {
     return { type: 'note', workH: 0, creditH: 0, text: entry.note || '', note: entry.note };
@@ -141,7 +152,7 @@ export function nightBonus(start, end, settings) {
 // Vom Mitarbeiter erfasste Zeit auflösen
 export function resolveTime(t, settings) {
   if (!alive(t)) return null;
-  if (t.status) return { type: 'status', status: t.status, workH: 0, text: t.status };
+  if (t.status) return { type: 'status', status: t.status, workH: 0, text: statusLabel(t.status) };
   const h = workHours(t.start, t.end, settings, t.pause);
   const pause = (t.pause === undefined || t.pause === null || t.pause === '') ? autoPauseMin(t.start, t.end, settings) : Number(t.pause);
   return { type: 'shift', start: t.start, end: t.end, pause, workH: h || 0, text: `${t.start}–${t.end}`, ...nightBonus(t.start, t.end, settings) };
@@ -158,8 +169,10 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
     const soll = sollDay(emp, d, s);
     const tr = times ? resolveTime(times[d], s) : null;
     const planWork = pr ? pr.workH : 0;
-    const credit = pr ? pr.creditH : 0;
-    const ist = tr ? tr.workH : planWork;
+    // vom Mitarbeiter als Zeitausgleich bestätigt, obwohl ein Dienst geplant war: Dienststunden gelten als ZA
+    const trZA = tr && tr.type === 'status' && tr.status === 'ZA' && pr && pr.type === 'shift';
+    const credit = trZA ? planWork : pr ? pr.creditH : 0;
+    const ist = trZA ? 0 : tr ? tr.workH : planWork;
     r.soll += soll;
     r.planH += planWork;
     r.istH += ist;
@@ -172,7 +185,8 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
       if (pr.status === 'Krankenstand' && soll > 0) r.krankTage++;
       if (pr.status === 'ZA') r.zaTage++;
     }
-        const za = pr && pr.type === 'status' && pr.status === 'ZA' && !holidayName(d, s) ? credit : 0;
+    if (trZA) r.zaTage++;
+    const za = (trZA || (pr && pr.type === 'status' && pr.status === 'ZA')) && !holidayName(d, s) ? credit : 0;
     r.tage.push({ date: d, pe, pr, tr, soll, ist, credit, za, bonus });
   }
   r.saldo = r.tage.reduce((a, t) => a + t.ist + t.credit - t.za - t.soll + t.bonus, 0);

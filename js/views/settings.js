@@ -119,7 +119,7 @@ act('emp-edit', async ({ e: id }) => {
         <label class="field"><span>Wochenstunden</span><input type="number" name="weeklyHours" step="0.5" min="0" value="${esc(e.weeklyHours)}"></label>
         <label class="field"><span>Farbe</span><input type="color" name="color" value="${esc(e.color || '#1f77b4')}"></label>
       </div>
-      <div class="field"><span>Arbeitstage (für Tagessoll, Urlaub und ZA)</span><div class="seg">${[0, 1, 2, 3, 4, 5].map((i) => `<label><input type="checkbox" name="wd${i}" ${(e.workDays && e.workDays.length) ? (e.workDays.includes(i) ? 'checked' : '') : (i < 5 ? 'checked' : '')}><span>${K.WOCHENTAGE[i]}</span></label>`).join('')}</div>
+      <div class="field"><span>Arbeitstage (für Tagessoll, Urlaub und Zeitausgleich)</span><div class="seg">${[0, 1, 2, 3, 4, 5].map((i) => `<label><input type="checkbox" name="wd${i}" ${(e.workDays && e.workDays.length) ? (e.workDays.includes(i) ? 'checked' : '') : (i < 5 ? 'checked' : '')}><span>${K.WOCHENTAGE[i]}</span></label>`).join('')}</div>
         <small class="muted">Die Wochenstunden werden auf diese Tage verteilt. Bei freier Zeiteinteilung die Tage wählen, an denen sie meistens arbeitet.</small></div>
       <div class="row2">
         <label class="field"><span>Eintritt (Beginn Urlaubsjahr)</span><input type="date" name="startDate" value="${esc(e.startDate || '')}"></label>
@@ -295,7 +295,7 @@ act('tpl-edit', async ({ e }) => {
   const t = alive(plan.template[e]) ? plan.template[e] : { days: [null, null, null, null, null, null, 'status:Frei'] };
   const shifts = shiftsSorted(plan);
   const opts = (v) => `<option value="">–</option>${shifts.map((sh) => `<option value="${sh.id}" ${v === sh.id ? 'selected' : ''}>${esc(sh.start)}–${esc(sh.end)} (${esc(sh.label)})</option>`).join('')}
-    ${['Frei', 'ZA'].map((st) => `<option value="status:${st}" ${v === 'status:' + st ? 'selected' : ''}>${st}</option>`).join('')}`;
+    ${['Frei', 'ZA'].map((st) => `<option value="status:${st}" ${v === 'status:' + st ? 'selected' : ''}>${K.statusLabel(st)}</option>`).join('')}`;
   const r = await openModal({
     title: `Fixer Wochenplan: ${plan.employees[e].name}`,
     body: `${K.WOCHENTAGE_LANG.map((n, i) => `<label class="field inline"><span>${n}</span><select name="d${i}">${opts(t.days[i])}</select></label>`).join('')}

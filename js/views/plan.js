@@ -19,7 +19,7 @@ export function cellHtml(r, pe, { compact = false } = {}) {
   }
   if (r.type === 'status') {
     const st = K.STATUS[r.status] || {};
-    return `<span class="chip${tpl}" style="--c:${st.farbe || '#888'}">${esc(compact ? (st.kurz || r.status) : r.status)}</span>${r.note && !compact ? `<small class="note">${esc(r.note)}</small>` : ''}`;
+    return `<span class="chip${tpl}" style="--c:${st.farbe || '#888'}">${esc(compact ? (st.kurz || r.status) : K.statusLabel(r.status))}</span>${r.note && !compact ? `<small class="note">${esc(r.note)}</small>` : ''}`;
   }
   return `<span class="cell-note">${esc(r.text)}</span>`;
 }
@@ -300,7 +300,7 @@ act('copy-week', async () => {
       }
     }
   });
-  toast('Vorwoche übernommen (ohne Urlaub, ZA und Krankenstand)');
+  toast('Vorwoche übernommen (ohne Urlaub, Zeitausgleich und Krankenstand)');
 });
 
 // ---------- Eintrag bearbeiten ----------
@@ -337,7 +337,7 @@ export async function editEntry(date, empId) {
       </div>
     </div>
     <div class="pane" data-pane="status">
-      <div class="preset-grid">${Object.entries(K.STATUS).map(([k, v]) => `<label class="preset"><input type="radio" name="status" value="${k}" ${st.status === k ? 'checked' : ''}><span><b style="color:${v.farbe}">${k}</b></span></label>`).join('')}</div>
+      <div class="preset-grid">${Object.entries(K.STATUS).map(([k, v]) => `<label class="preset"><input type="radio" name="status" value="${k}" ${st.status === k ? 'checked' : ''}><span><b style="color:${v.farbe}">${esc(K.statusLabel(k))}</b></span></label>`).join('')}</div>
       <label class="field"><span>Angerechnete Stunden (leer = automatisch)</span><input type="number" name="credit" step="0.25" inputmode="decimal" value="${st.credit ?? ''}" placeholder="auto"></label>
     </div>
     <label class="field"><span>Notiz (z. B. Judge, Prerelease)</span><input name="note" value="${esc(st.note && pe && pe.source !== 'feiertag' ? st.note : (alive(cur) ? cur.note || '' : ''))}" maxlength="80"></label>
@@ -397,6 +397,10 @@ export async function editEntry(date, empId) {
         if (!f.status) { toast('Bitte auswählen', 'error'); return false; }
         rec = { kind: 'status', status: f.status };
         if (f.credit !== '') rec.credit = Number(f.credit);
+        else if (f.status === 'ZA') { // Zeitausgleich statt eines Dienstes: genau dessen Stunden
+          const was = resolve(plan, pe, emp, date);
+          if (was && was.type === 'shift' && was.workH > 0) rec.credit = Math.round(was.workH * 100) / 100;
+        }
       } else {
         if (!f.note.trim()) { toast('Notiz eingeben', 'error'); return false; }
         rec = { kind: 'note' };

@@ -11,11 +11,13 @@ export const MONATE = ['Jänner', 'Februar', 'März', 'April', 'Mai', 'Juni', 'J
 export const STATUS = {
   'Frei':         { credit: 'null', farbe: '#9aa3ad', kurz: 'F' },
   'Urlaub':       { credit: 'tag',  farbe: '#2e9d5b', kurz: 'U' },
-  'ZA':           { credit: 'za',    farbe: '#c48a10', kurz: 'ZA' },
+  'ZA':           { credit: 'za',    farbe: '#c48a10', kurz: 'ZA', label: 'Zeitausgleich' },
   'Krankenstand': { credit: 'tag',  farbe: '#c0392b', kurz: 'K' },
   'Ersatzfrei':   { credit: 'tag',  farbe: '#7d5bbe', kurz: 'EF' },
   'Feiertag':     { credit: 'tag',  farbe: '#5b7dbe', kurz: 'FT' },
 };
+
+export function statusLabel(k) { return (STATUS[k] && STATUS[k].label) || k; }
 
 export function pad(n) { return String(n).padStart(2, '0'); }
 

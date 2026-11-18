@@ -86,7 +86,7 @@ function render(main) {
         <tr><th class="sticky">Urlaub / Krank</th>${stats.map((s) => `<td>${s.urlaubTage} / ${s.krankTage} T</td>`).join('')}<td></td><td></td></tr>
       </tfoot>
     </table></div>
-    <p class="hint">Geplant = Arbeitszeit laut Plan plus angerechnete Stunden für Feiertage, Urlaub, ZA, Krankenstand und Ersatzfrei (ZA wird dabei vom Zeitkonto abgezogen). Die tatsächlich erfassten Zeiten stehen unter „Zeiten“. Zoomen: mit zwei Fingern in der Tabelle oder mit + / −.</p>`;
+    <p class="hint">Geplant = Arbeitszeit laut Plan plus angerechnete Stunden für Feiertage, Urlaub, Zeitausgleich, Krankenstand und Ersatzfrei (Zeitausgleich wird dabei vom Zeitkonto abgezogen). Die tatsächlich erfassten Zeiten stehen unter „Zeiten“. Zoomen: mit zwei Fingern in der Tabelle oder mit + / −.</p>`;
   pinch(main.querySelector('.table-scroll.pinch'));
 }
 

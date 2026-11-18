@@ -70,7 +70,7 @@ function render(main) {
       <tbody>${st.tage.map((x) => {
         const wd = K.weekday(x.date);
         const pl = !admin && !isPublished(plan, x.date) ? '<span class="muted">Entwurf</span>' : x.pr ? (x.pr.type === 'shift' ? `${esc(x.pr.text)} <small>${K.fmtH(x.pr.workH)} h</small>` : esc(x.pr.text)) : '';
-        const rec = x.tr ? (x.tr.type === 'shift' ? `${esc(x.tr.text)} <small>${x.tr.pause} min Pause</small>` : esc(x.tr.text)) : (x.date <= t && x.pr && x.pr.type === 'shift' ? '<span class="muted">nicht erfasst</span>' : '');
+        const rec = x.tr ? (x.tr.type === 'shift' ? `${esc(x.tr.text)} <small>${x.tr.pause} min Pause</small>` : esc(x.tr.text)) : (x.date <= t && x.pr && x.pr.type === 'shift' ? '<span class="muted">nicht erfasst</span>' : x.date <= t && x.pr && x.pr.status === 'ZA' ? '<span class="muted">bitte bestätigen</span>' : '');
         const note = x.tr && times[x.date] && times[x.date].note ? `<small class="note">${esc(times[x.date].note)}</small>` : '';
         const h = x.ist + x.credit;
         const diff = x.tr && x.pr ? x.tr.workH - x.pr.workH : 0;
@@ -79,7 +79,7 @@ function render(main) {
           <td><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(x.date)}</td><td>${pl}</td><td>${rec}${note}</td>
           <td class="num">${h ? K.fmtH(h) : ''}${diff ? `<small>${diffBadge(diff)}</small>` : ''}${x.bonus ? `<small title="Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}">+${K.fmtH(x.bonus)} Z</small>` : ''}</td></tr>`;
       }).join('')}</tbody>
-      <tfoot><tr><td colspan="3">Summe Ist / Soll<small>inkl. Feiertag, Urlaub, ZA, Krankenstand</small></td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b><small>/ ${K.fmtH(st.soll)}</small>${diffBadge(st.istH + st.creditH - st.soll) ? `<small>${diffBadge(st.istH + st.creditH - st.soll)}</small>` : ''}${st.bonusH ? `<small>+${K.fmtH(st.bonusH)} Z</small>` : ''}</td></tr></tfoot>
+      <tfoot><tr><td colspan="3">Summe Ist / Soll<small>inkl. Feiertag, Urlaub, Zeitausgleich, Krankenstand</small></td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b><small>/ ${K.fmtH(st.soll)}</small>${diffBadge(st.istH + st.creditH - st.soll) ? `<small>${diffBadge(st.istH + st.creditH - st.soll)}</small>` : ''}${st.bonusH ? `<small>+${K.fmtH(st.bonusH)} Z</small>` : ''}</td></tr></tfoot>
     </table></div>
     <p class="hint">${admin ? 'Ist = erfasste Zeit, sonst die geplante. ' : 'Tippe auf einen Tag, um deine tatsächliche Zeit einzutragen. Ohne Eintrag zählt die geplante Zeit. '}Ab ${esc(plan.settings.pauseAfterH)} Stunden werden automatisch ${esc(plan.settings.pauseMin)} Minuten Pause abgezogen. Arbeit ab ${esc(plan.settings.nightFrom || '21:00')} zählt mit ${K.fmtH(Number(plan.settings.nightFactor ?? 1.5))}: Der Aufschlag (Z) kommt getrennt aufs Zeitkonto.</p>`;
 
@@ -127,12 +127,16 @@ async function editTime(d) {
   const cur = alive(doc.obj.times[d]) ? doc.obj.times[d] : null;
   const pr = resolve(plan, planEntry(plan, d, emp.id), emp, d);
   const s = plan.settings;
-  const v0 = cur || (pr && pr.type === 'shift' ? { start: pr.start, end: pr.end } : {});
+  const v0 = cur && !cur.status ? cur : (pr && pr.type === 'shift' ? { start: pr.start, end: pr.end } : {});
+  const plannedZA = !!(pr && pr.type === 'status' && pr.status === 'ZA');
+  const zaOk = plannedZA || (pr && pr.type === 'shift');
   await openModal({
     title: `${K.WOCHENTAGE[K.weekday(d)]} ${K.fmtDate(d, true)}`,
     body: `
-      ${pr ? `<p class="small">Geplant: <b>${esc(pr.text)}</b></p>` : '<p class="small muted">Kein Dienst geplant.</p>'}
-      <div class="row3">
+      ${pr ? `<p class="small">Geplant: <b>${esc(pr.text)}</b>${plannedZA ? ` (${K.fmtH(pr.creditH)} h)` : ''}</p>` : '<p class="small muted">Kein Dienst geplant.</p>'}
+      ${plannedZA ? '<p>Du hast an diesem Tag Zeitausgleich. Bitte nur bestätigen, Zeiten musst du keine eintragen.</p>' : ''}
+      ${cur && cur.status ? `<p class="small">Erfasst: <b>${esc(K.statusLabel(cur.status))}</b></p>` : ''}
+      <div class="row3" ${plannedZA ? 'hidden' : ''}>
         <label class="field"><span>Beginn</span><input type="time" name="start" value="${esc(v0.start || '')}"></label>
         <label class="field"><span>Ende</span><input type="time" name="end" value="${esc(v0.end || '')}"></label>
         <label class="field"><span>Pause (min)</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="auto" value="${v0.pause ?? ''}"></label>
@@ -142,7 +146,8 @@ async function editTime(d) {
     buttons: [
       ...(cur ? [{ label: 'Löschen', value: 'del', kind: 'ghost' }] : []),
       { label: 'Abbrechen', value: null },
-      { label: 'Speichern', value: 'save', kind: 'primary' },
+      ...(zaOk ? [{ label: 'Zeitausgleich bestätigen', value: 'za', kind: plannedZA ? 'primary' : '' }] : []),
+      ...(plannedZA ? [] : [{ label: 'Speichern', value: 'save', kind: 'primary' }]),
     ],
     onOpen(root) {
       const upd = () => {
@@ -159,6 +164,7 @@ async function editTime(d) {
       if (!v) return null;
       const t = now();
       if (v === 'del') { doc.update((o) => { o.times[d] = { deleted: true, updatedAt: t }; }); return 'ok'; }
+      if (v === 'za') { doc.update((o) => { o.times[d] = { status: 'ZA', updatedAt: t, ...(isAdmin() ? { byAdmin: true } : {}) }; }); toast('Zeitausgleich bestätigt'); return 'ok'; }
       const f = formData(root);
       if (K.parseTime(f.start) === null || K.parseTime(f.end) === null) { toast('Beginn und Ende eingeben', 'error'); return false; }
       const rec = { start: f.start, end: f.end, updatedAt: t };
