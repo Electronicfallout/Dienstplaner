@@ -74,7 +74,7 @@ export function collect() {
     if (m && m.days.length) todo.push({ icon: '⏱️', text: `Bitte trag deine Stunden für KW ${m.week} ein`, sub: m.days.map((d) => `${K.WOCHENTAGE[K.weekday(d)]} ${K.fmtDate(d)}`).join(', '), view: 'times' });
   }
   const pn = proposalNotices(plan);
-  todo.push(...pn.todo);
+  todo.unshift(...pn.todo); // Tausch-Anfragen ganz oben
   news.push(...pn.news);
   news.sort((a, b) => b.at - a.at);
   const seen = getSeen();

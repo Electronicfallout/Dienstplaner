@@ -73,9 +73,9 @@ function render(main) {
         <button class="btn small ghost" data-act="pdf" data-kind="week">PDF</button>
       </div>
     </div>
+    ${proposalsHtml(plan)}
     ${admin && draftDays.length ? `<div class="notice draft">✏️ <b>Entwurf:</b> ${draftDays.length === days.length ? 'Diese Woche ist' : `Ab ${K.fmtDate(draftDays[0])} ist die Woche`} noch nicht veröffentlicht. Die Mitarbeiter sehen sie noch nicht. ${pubUntil ? `Veröffentlicht bis ${K.fmtDate(pubUntil, true)}.` : ''}</div>` : ''}
     ${admin && days.some((d) => coverageGaps(plan, d).length) ? `<div class="notice warn">⚠ <b>Besetzung:</b> ${days.filter((d) => coverageGaps(plan, d).length).map((d) => `${K.WOCHENTAGE[K.weekday(d)]} fehlt ${coverageGaps(plan, d).join(', ')}`).join(' · ')}</div>` : ''}
-    ${proposalsHtml(plan)}
     ${admin && !pubUntil ? '<div class="notice">Tipp: Mit <b>Veröffentlichen</b> gibst du den Plan bis zu einem Datum für die Mitarbeiter frei. Spätere Änderungen daran werden dann protokolliert und den Betroffenen angezeigt.</div>' : ''}
     ${!admin && draftDays.length ? `<div class="notice draft">${draftDays.length === days.length ? 'Diese Woche ist noch nicht veröffentlicht.' : `Ab ${K.fmtDate(draftDays[0])} ist der Plan noch nicht veröffentlicht.`}</div>` : ''}`;
 
