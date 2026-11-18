@@ -5,7 +5,7 @@
 // plan.settings.satRotation = { members: [empId] | null (= alle Vollzeitkräfte), shiftId, count, from }
 
 import { App, isAdmin } from './app.js';
-import { esc, act, openModal, toast, formData } from './ui.js';
+import { esc, safeColor, act, openModal, toast, formData } from './ui.js';
 import * as K from './calc.js';
 import { employeesSorted, shiftsSorted, planEntry, resolve, employed, alive, setEntry, tracked } from './model.js';
 import { now } from './store.js';
@@ -136,14 +136,14 @@ export function satSettingsHtml(plan) {
       <div class="card-head"><h2>Samstags-Rad</h2><button class="btn small primary" data-act="sat-save">Speichern</button></div>
       <p class="small muted">Diese Personen wechseln sich bei den Samstagen ab. Im Plan verteilt „Samstage“ die Dienste: Wer seit ${K.fmtDate(c.from, true)} am wenigsten Samstage hatte, kommt zuerst dran. Judge-Einsätze (Notiz „Judge“) zählen als Samstag, und wer am Samstag schon etwas eingetragen hat, wird übersprungen.</p>
       <form id="satform">
-        <div class="seg">${employeesSorted(plan).filter(tracked).map((e) => `<label><input type="checkbox" name="m_${e.id}" ${ids.includes(e.id) ? 'checked' : ''}><span>${esc(e.name)}</span></label>`).join('')}</div>
+        <div class="seg">${employeesSorted(plan).filter(tracked).map((e) => `<label><input type="checkbox" name="m_${esc(e.id)}" ${ids.includes(e.id) ? 'checked' : ''}><span>${esc(e.name)}</span></label>`).join('')}</div>
         <div class="row2">
-          <label class="field"><span>Samstagsschicht</span><select name="shiftId">${shifts.map((s) => `<option value="${s.id}" ${s.id === c.shiftId ? 'selected' : ''}>${esc(s.start)}–${esc(s.end)} ${esc(s.label || '')}</option>`).join('')}</select></label>
-          <label class="field"><span>Personen pro Samstag</span><input type="number" name="count" min="1" max="5" value="${c.count}"></label>
+          <label class="field"><span>Samstagsschicht</span><select name="shiftId">${shifts.map((s) => `<option value="${esc(s.id)}" ${s.id === c.shiftId ? 'selected' : ''}>${esc(s.start)}–${esc(s.end)} ${esc(s.label || '')}</option>`).join('')}</select></label>
+          <label class="field"><span>Personen pro Samstag</span><input type="number" name="count" min="1" max="5" value="${esc(c.count)}"></label>
         </div>
         <label class="field"><span>Zählen ab</span><input type="date" name="from" value="${esc(c.from)}"></label>
       </form>
-      <ul class="list">${members.map((e) => `<li><span class="dot" style="background:${e.color}"></span><div class="grow"><b>${esc(e.name)}</b><small>${hist[e.id].n} Samstage${hist[e.id].judge ? `, davon ${hist[e.id].judge} als Judge` : ''}${hist[e.id].last ? ` · zuletzt ${K.fmtDate(hist[e.id].last, true)}` : ''}</small></div></li>`).join('')}</ul>
+      <ul class="list">${members.map((e) => `<li><span class="dot" style="background:${safeColor(e.color)}"></span><div class="grow"><b>${esc(e.name)}</b><small>${hist[e.id].n} Samstage${hist[e.id].judge ? `, davon ${hist[e.id].judge} als Judge` : ''}${hist[e.id].last ? ` · zuletzt ${K.fmtDate(hist[e.id].last, true)}` : ''}</small></div></li>`).join('')}</ul>
     </section>`;
 }
 

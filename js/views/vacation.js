@@ -1,7 +1,7 @@
 // Urlaubsplanung: Konto pro Person, Jahresübersicht, Anträge.
 
 import { App, registerView, isAdmin, empDoc } from '../app.js';
-import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
+import { esc, safeColor, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
 import { tracked, employeesSorted, vacationAccount, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay, isWorkDay } from '../model.js';
 import { now } from '../store.js';
@@ -64,7 +64,7 @@ function render(main) {
     <h3>Urlaubskonto heute (in Tagen)</h3>
     <div class="table-scroll"><table class="times">
       <thead><tr><th>Person</th><th>Urlaubsjahr</th><th class="num">Anspruch pro Jahr</th><th class="num">Stand heute</th><th class="num">Geplant</th><th class="num">Rest</th><th class="num">Kommt noch dazu</th></tr></thead>
-      <tbody>${acc.map(({ e, v }) => `<tr><td class="nowrap"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}${e.startDate ? '' : (admin ? ' <span class="gap" title="Eintrittsdatum fehlt">Eintritt?</span>' : '')}</td>
+      <tbody>${acc.map(({ e, v }) => `<tr><td class="nowrap"><span class="dot" style="background:${safeColor(e.color)}"></span>${esc(e.name)}${e.startDate ? '' : (admin ? ' <span class="gap" title="Eintrittsdatum fehlt">Eintritt?</span>' : '')}</td>
           <td class="nowrap">${K.fmtDate(v.ujFrom)}–${K.fmtDate(v.ujTo, true)}<small>+ ${K.fmtNum(Math.round(v.monatT * 100) / 100)} T pro Monat</small></td>
           <td class="num"><b>${K.fmtNum(v.jahrT)} Tage</b><small>${esc(plan.settings.vacationWeeks)} Wochen</small></td>
           <td class="num">${T(v.standT)}</td><td class="num">${T(v.geplantT)}</td>
@@ -81,8 +81,8 @@ function render(main) {
         <div><b>${admin ? esc(r.emp.name) + ': ' : ''}${esc(r.kind || 'Urlaub')} ${K.fmtDate(r.from, true)} – ${K.fmtDate(r.to, true)}</b>
         <small>${days.length} Tage${r.note ? ' · ' + esc(r.note) : ''}${r.reply ? ' · Antwort: ' + esc(r.reply) : ''}</small></div>
         <div class="req-actions">${statusChip(r.status)}
-          ${admin && r.status === 'offen' ? `<button class="btn small primary" data-act="v-approve" data-e="${r.emp.id}" data-r="${r.id}">Genehmigen</button><button class="btn small" data-act="v-reject" data-e="${r.emp.id}" data-r="${r.id}">Ablehnen</button>` : ''}
-          ${!admin && r.status === 'offen' ? `<button class="btn small" data-act="v-withdraw" data-r="${r.id}">Zurückziehen</button>` : ''}
+          ${admin && r.status === 'offen' ? `<button class="btn small primary" data-act="v-approve" data-e="${esc(r.emp.id)}" data-r="${esc(r.id)}">Genehmigen</button><button class="btn small" data-act="v-reject" data-e="${esc(r.emp.id)}" data-r="${esc(r.id)}">Ablehnen</button>` : ''}
+          ${!admin && r.status === 'offen' ? `<button class="btn small" data-act="v-withdraw" data-r="${esc(r.id)}">Zurückziehen</button>` : ''}
         </div></li>`;
     }).join('')}</ul>` : '';
 
@@ -94,7 +94,7 @@ function render(main) {
     <h3>Wer ist wann weg?</h3>
     <div class="table-scroll"><table class="yearview">
       <thead><tr><th class="sticky"></th>${weeks.map((w) => { const p = K.parseIso(K.addDays(w, 3)); const first = p.d <= 7; return `<th title="KW ${K.isoWeek(w)}">${first && p.y === y ? K.MONATE[p.m - 1].slice(0, 3) : ''}</th>`; }).join('')}</tr></thead>
-      <tbody>${employeesSorted(plan).map((e) => `<tr><th class="sticky"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>${weeks.map((w) => {
+      <tbody>${employeesSorted(plan).map((e) => `<tr><th class="sticky"><span class="dot" style="background:${safeColor(e.color)}"></span>${esc(e.name)}</th>${weeks.map((w) => {
         let u = 0, k = 0;
         const list = [];
         for (let i = 0; i < 6; i++) {
@@ -135,7 +135,7 @@ async function rangeDialog(title, { withEmp, withNote, okLabel }) {
   return openModal({
     title,
     body: `
-      ${withEmp ? `<label class="field"><span>Mitarbeiter</span><select name="emp">${employeesSorted(plan).map((e) => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></label>` : ''}
+      ${withEmp ? `<label class="field"><span>Mitarbeiter</span><select name="emp">${employeesSorted(plan).map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('')}</select></label>` : ''}
       <div class="row2">
         <label class="field"><span>Von</span><input type="date" name="from" value="${t}"></label>
         <label class="field"><span>Bis</span><input type="date" name="to" value="${t}"></label>

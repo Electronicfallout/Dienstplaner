@@ -1,7 +1,7 @@
 // Wochenansicht des Dienstplans (Planer bearbeitet, Mitarbeiter sehen).
 
 import { App, registerView, isAdmin, timesOf } from '../app.js';
-import { esc, act, openModal, toast, formData, confirmBox } from '../ui.js';
+import { esc, safeColor, act, openModal, toast, formData, confirmBox } from '../ui.js';
 import * as K from '../calc.js';
 import { employeesSorted, shiftsSorted, planEntry, resolve, entryKey, sollDay, sollAt, employed, alive, setEntry, isPublished, eventsOn, recurringOn, recurringText, coverageGaps } from '../model.js';
 import { now } from '../store.js';
@@ -15,7 +15,8 @@ export function cellHtml(r, pe, { compact = false } = {}) {
   if (!r) return '<span class="empty">·</span>';
   const tpl = pe && pe.source !== 'plan' ? ' from-tpl' : '';
   if (r.type === 'shift') {
-    return `<span class="cell-shift${tpl}${r.color ? ' colored' : ''}"${r.color ? ` style="background:${esc(r.color)}"` : ''}><b>${esc(r.start)}–${esc(r.end)}</b>${compact ? '' : `<small>${K.fmtH(r.workH)} h${r.label ? ' · ' + esc(r.label) : ''}</small>`}${r.note ? `<small class="note">${esc(r.note)}</small>` : ''}</span>`;
+    const col = safeColor(r.color, '');
+    return `<span class="cell-shift${tpl}${col ? ' colored' : ''}"${col ? ` style="background:${col}"` : ''}><b>${esc(r.start)}–${esc(r.end)}</b>${compact ? '' : `<small>${K.fmtH(r.workH)} h${r.label ? ' · ' + esc(r.label) : ''}</small>`}${r.note ? `<small class="note">${esc(r.note)}</small>` : ''}</span>`;
   }
   if (r.type === 'status') {
     const st = K.STATUS[r.status] || {};
@@ -120,14 +121,14 @@ function render(main) {
     return cellHtml(resolve(plan, pe, e, d), pe);
   };
   const myAct = (d, e) => myCellAct(plan, d, e, meId);
-  const editAttr = (d, e) => (admin ? `data-act="edit-entry" data-d="${d}" data-e="${e.id}"` : myAct(d, e));
+  const editAttr = (d, e) => (admin ? `data-act="edit-entry" data-d="${d}" data-e="${esc(e.id)}"` : myAct(d, e));
   const canEdit = (d, e) => admin || !!myAct(d, e);
   const dayAttr = (d) => (admin ? `data-act="edit-day" data-d="${d}"` : '');
 
   let body;
   if (layout === 'table') {
     body = `<div class="table-scroll"><table class="plan">
-      <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}<small>${K.fmtH(e.weeklyHours)} h</small></th>`).join('')}<th class="evcol">Events im Shop</th><th class="evcol">Anmerkung</th></tr></thead>
+      <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${safeColor(e.color)}"></span>${esc(e.name)}<small>${K.fmtH(e.weeklyHours)} h</small></th>`).join('')}<th class="evcol">Events im Shop</th><th class="evcol">Anmerkung</th></tr></thead>
       <tbody>${days.map((d) => {
         const ev = dayInfo(d);
         return `<tr class="${K.weekday(d) === 5 ? 'sat' : ''} ${isPublished(plan, d) ? '' : 'draft'}">
@@ -144,11 +145,11 @@ function render(main) {
       <section class="day-card ${d === t ? 'today' : ''}">
         <div class="${admin ? 'clickable' : ''}" ${dayAttr(d)}>${dayHead(d, true)}</div>
         <ul>${emps.filter((e) => employed(e, d)).map((e) => `<li class="${e.id === meId ? 'me' : ''} ${canEdit(d, e) ? 'clickable' : ''}" ${editAttr(d, e)}>
-            <span class="who"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</span>
+            <span class="who"><span class="dot" style="background:${safeColor(e.color)}"></span>${esc(e.name)}</span>
             <span class="what">${cell(d, e)}</span></li>`).join('')}</ul>
       </section>`).join('')}
       <section class="day-card sums"><div class="dayhead"><b>Stunden diese Woche</b></div>
-        <ul>${emps.map((e, i) => `<li class="${e.id === meId ? 'me' : ''}"><span class="who"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</span><span class="what">${e.noTimes ? `${K.fmtH(sums[i].h)} h` : `${K.fmtH(sums[i].h + sums[i].credit)} / ${K.fmtH(sums[i].soll)} h${diffBadge(sums[i].h + sums[i].credit - sums[i].soll)}`}</span></li>`).join('')}</ul>
+        <ul>${emps.map((e, i) => `<li class="${e.id === meId ? 'me' : ''}"><span class="who"><span class="dot" style="background:${safeColor(e.color)}"></span>${esc(e.name)}</span><span class="what">${e.noTimes ? `${K.fmtH(sums[i].h)} h` : `${K.fmtH(sums[i].h + sums[i].credit)} / ${K.fmtH(sums[i].soll)} h${diffBadge(sums[i].h + sums[i].credit - sums[i].soll)}`}</span></li>`).join('')}</ul>
       </section></div>`;
   }
 
@@ -327,24 +328,24 @@ export async function editEntry(date, empId) {
       ${[['preset', 'Schicht'], ['custom', 'Eigene Zeit'], ['status', 'Abwesend/Frei'], ['note', 'Nur Notiz']].map(([k, l]) => `<label><input type="radio" name="kind" value="${k}" ${kind0 === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}
     </div>
     <div class="pane" data-pane="preset">
-      <div class="preset-grid">${shifts.map((sh) => `<label class="preset"><input type="radio" name="shiftId" value="${sh.id}" ${st.shiftId === sh.id && !st.start ? 'checked' : ''}><span><b>${esc(sh.start)}–${esc(sh.end)}</b><small>${esc(sh.label)} · ${K.fmtH(K.workHours(sh.start, sh.end, s))} h</small></span></label>`).join('')}</div>
+      <div class="preset-grid">${shifts.map((sh) => `<label class="preset"><input type="radio" name="shiftId" value="${esc(sh.id)}" ${st.shiftId === sh.id && !st.start ? 'checked' : ''}><span><b>${esc(sh.start)}–${esc(sh.end)}</b><small>${esc(sh.label)} · ${K.fmtH(K.workHours(sh.start, sh.end, s))} h</small></span></label>`).join('')}</div>
     </div>
     <div class="pane" data-pane="custom">
       <div class="row3">
         <label class="field"><span>Beginn</span><input type="time" name="start" value="${esc(startV)}"></label>
         <label class="field"><span>Ende</span><input type="time" name="end" value="${esc(endV)}"></label>
-        <label class="field"><span>Pause (min)</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="auto" value="${st.pause ?? ''}"></label>
+        <label class="field"><span>Pause (min)</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="auto" value="${esc(st.pause)}"></label>
       </div>
     </div>
     <div class="pane" data-pane="status">
       <div class="preset-grid">${Object.entries(K.STATUS).map(([k, v]) => `<label class="preset"><input type="radio" name="status" value="${k}" ${st.status === k ? 'checked' : ''}><span><b style="color:${v.farbe}">${esc(K.statusLabel(k))}</b></span></label>`).join('')}</div>
-      <label class="field"><span>Angerechnete Stunden (leer = automatisch)</span><input type="number" name="credit" step="0.25" inputmode="decimal" value="${st.credit ?? ''}" placeholder="auto"></label>
+      <label class="field"><span>Angerechnete Stunden (leer = automatisch)</span><input type="number" name="credit" step="0.25" inputmode="decimal" value="${esc(st.credit)}" placeholder="auto"></label>
     </div>
     <label class="field"><span>Notiz (z. B. Judge, Prerelease)</span><input name="note" value="${esc(st.note && pe && pe.source !== 'feiertag' ? st.note : (alive(cur) ? cur.note || '' : ''))}" maxlength="80"></label>
     <p class="calc" id="calc"></p>
     ${recorded ? `<p class="small muted">Vom Mitarbeiter erfasst: ${recorded.status ? esc(recorded.status) : `${esc(recorded.start)}–${esc(recorded.end)}`}</p>` : ''}
     ${pe && pe.source === 'vorlage' ? '<p class="small muted">Aktuell aus dem fixen Wochenplan.</p>' : ''}
-    <p class="btn-row"><button class="link" type="button" data-act="planer-swap" data-d="${date}" data-e="${empId}">⇄ Mit jemandem tauschen</button>${!emp.noTimes && date <= K.today() ? `<button class="link" type="button" data-act="plan-time" data-d="${date}" data-e="${empId}">⏱ Arbeitszeit eintragen</button>` : ''}</p>
+    <p class="btn-row"><button class="link" type="button" data-act="planer-swap" data-d="${esc(date)}" data-e="${esc(empId)}">⇄ Mit jemandem tauschen</button>${!emp.noTimes && date <= K.today() ? `<button class="link" type="button" data-act="plan-time" data-d="${esc(date)}" data-e="${esc(empId)}">⏱ Arbeitszeit eintragen</button>` : ''}</p>
     ${pe && pe.source === 'feiertag' ? `<p class="small muted">Feiertag: ${esc(pe.note)}</p>` : ''}`;
 
   await openModal({
@@ -435,7 +436,7 @@ act('edit-day', async ({ d }) => {
     title: `${K.WOCHENTAGE_LANG[K.weekday(d)]}, ${K.fmtDate(d, true)}`,
     body: `
       <label class="field"><span>Event im Shop</span><input name="event" value="${esc(day.event || '')}" maxlength="80" placeholder="z. B. MTG Prerelease"></label>
-      ${recAll.length ? `<div class="field"><span>Wiederkehrende Events an diesem Tag</span>${recAll.map((r) => `<label class="check"><input type="checkbox" name="rec_${r.id}" ${r.on ? 'checked' : ''}><span>${esc(r.title)} <small class="muted">(${esc(recurringText(r))})</small></span></label>`).join('')}</div>` : ''}
+      ${recAll.length ? `<div class="field"><span>Wiederkehrende Events an diesem Tag</span>${recAll.map((r) => `<label class="check"><input type="checkbox" name="rec_${esc(r.id)}" ${r.on ? 'checked' : ''}><span>${esc(r.title)} <small class="muted">(${esc(recurringText(r))})</small></span></label>`).join('')}</div>` : ''}
       <label class="field"><span>Anmerkung</span><input name="note" value="${esc(day.note || '')}" maxlength="120" placeholder="z. B. Mitarbeiterbesprechung"></label>
       <label class="check"><input type="checkbox" name="hol" ${holName ? 'checked' : ''}><span>Feiertag (Shop zu, kein Soll)</span></label>
       <label class="field"><span>Name des Feiertags</span><input name="holName" value="${esc(holName || autoHol)}" maxlength="40"></label>`,

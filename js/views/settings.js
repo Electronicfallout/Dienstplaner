@@ -1,7 +1,7 @@
 // Einstellungen: Mitarbeiter, Schichten, fixer Wochenplan, Regeln, Daten, Verbindung.
 
 import { App, registerView, empDoc, loadEmployeeVaults } from '../app.js';
-import { esc, act, openModal, toast, formData, confirmBox, promptPassword, loadScript, download, pickFile } from '../ui.js';
+import { esc, safeColor, act, openModal, toast, formData, confirmBox, promptPassword, loadScript, download, pickFile } from '../ui.js';
 import * as K from '../calc.js';
 import * as C from '../crypto.js';
 import { employeesSorted, shiftsSorted, alive, dayTarget, recurringText, shiftColor, SHIFT_COLORS, DEFAULT_OPEN } from '../model.js';
@@ -28,17 +28,17 @@ function render(main) {
         const h = App.emp[e.id];
         const state = h ? (h.missing ? 'noch nicht angemeldet' : h.error ? 'nicht lesbar' : 'angemeldet') : '';
         return `<li class="${e.active === false ? 'inactive' : ''}">
-          <span class="dot" style="background:${e.color}"></span>
+          <span class="dot" style="background:${safeColor(e.color)}"></span>
           <div class="grow"><b>${esc(e.name)}</b><small>${e.noTimes ? 'ohne Zeiterfassung' : `${K.fmtH(e.weeklyHours)} h/Woche · Tagessoll ${K.fmtH(dayTarget(e, s))} h${e.workDays && e.workDays.length ? ' (' + e.workDays.map((i) => K.WOCHENTAGE[i]).join(', ') + ')' : ''}`}${e.startDate ? ' · ab ' + K.fmtDate(e.startDate, true) : ''}${e.endDate ? ' · bis ' + K.fmtDate(e.endDate, true) : ''}${state ? ' · ' + state : ''}</small></div>
-          ${e.noTimes ? '' : `<button class="btn small" data-act="emp-invite" data-e="${e.id}">Einladen</button>`}
-          <button class="btn small ghost" data-act="emp-edit" data-e="${e.id}">Bearbeiten</button>
+          ${e.noTimes ? '' : `<button class="btn small" data-act="emp-invite" data-e="${esc(e.id)}">Einladen</button>`}
+          <button class="btn small ghost" data-act="emp-edit" data-e="${esc(e.id)}">Bearbeiten</button>
         </li>`;
       }).join('')}</ul>` : '<p class="muted">Noch niemand angelegt. Du kannst auch die alte Excel-Datei importieren (unten).</p>'}
     </section>
 
     <section class="card">
       <div class="card-head"><h2>Schichten</h2><button class="btn small primary" data-act="shift-edit">+ Neu</button></div>
-      <ul class="list">${shifts.map((sh) => `<li><div class="grow"><b><span class="swatch" style="background:${esc(shiftColor(plan, sh.id, sh.start, sh.end, null) || 'transparent')}"></span>${esc(sh.start)}–${esc(sh.end)}</b><small>${esc(sh.label)} · ${K.fmtH(K.workHours(sh.start, sh.end, s))} h Arbeitszeit</small></div><button class="btn small ghost" data-act="shift-edit" data-id="${sh.id}">Bearbeiten</button></li>`).join('')}</ul>
+      <ul class="list">${shifts.map((sh) => `<li><div class="grow"><b><span class="swatch" style="background:${safeColor(shiftColor(plan, sh.id, sh.start, sh.end, null))}"></span>${esc(sh.start)}–${esc(sh.end)}</b><small>${esc(sh.label)} · ${K.fmtH(K.workHours(sh.start, sh.end, s))} h Arbeitszeit</small></div><button class="btn small ghost" data-act="shift-edit" data-id="${esc(sh.id)}">Bearbeiten</button></li>`).join('')}</ul>
     </section>
 
     ${satSettingsHtml(plan)}
@@ -46,7 +46,7 @@ function render(main) {
     <section class="card">
       <div class="card-head"><h2>Events im Shop</h2><div class="btn-row"><button class="btn small" data-act="ics-import">Kalender (.ics) importieren</button><button class="btn small primary" data-act="rec-edit">+ Wiederkehrend</button></div></div>
       <p class="small muted">Einzelne Events trägst du direkt im Plan beim Tag ein. Hier legst du regelmäßige Events an, z. B. jeden Freitag Commander.</p>
-      ${recs.length ? `<ul class="list">${recs.map((r) => `<li><div class="grow"><b>↻ ${esc(r.title)}</b><small>${esc(recurringText(r))}${r.from ? ' · ab ' + K.fmtDate(r.from, true) : ''}${r.to ? ' · bis ' + K.fmtDate(r.to, true) : ''}${r.noPrint ? ' · wird nicht gedruckt' : ''}</small></div><button class="btn small ghost" data-act="rec-edit" data-id="${r.id}">Bearbeiten</button></li>`).join('')}</ul>` : '<p class="muted">Noch keine wiederkehrenden Events.</p>'}
+      ${recs.length ? `<ul class="list">${recs.map((r) => `<li><div class="grow"><b>↻ ${esc(r.title)}</b><small>${esc(recurringText(r))}${r.from ? ' · ab ' + K.fmtDate(r.from, true) : ''}${r.to ? ' · bis ' + K.fmtDate(r.to, true) : ''}${r.noPrint ? ' · wird nicht gedruckt' : ''}</small></div><button class="btn small ghost" data-act="rec-edit" data-id="${esc(r.id)}">Bearbeiten</button></li>`).join('')}</ul>` : '<p class="muted">Noch keine wiederkehrenden Events.</p>'}
     </section>
 
     <section class="card">
@@ -55,7 +55,7 @@ function render(main) {
       <ul class="list">${employeesSorted(plan).map((e) => {
         const t = alive(plan.template[e.id]) ? plan.template[e.id] : null;
         const sum = t ? t.days.map((v, i) => v ? `${K.WOCHENTAGE[i]} ${v.startsWith('status:') ? v.slice(7) : (plan.shifts[v] ? plan.shifts[v].start + '–' + plan.shifts[v].end : '?')}` : '').filter(Boolean).join(', ') : '';
-        return `<li><span class="dot" style="background:${e.color}"></span><div class="grow"><b>${esc(e.name)}</b><small>${esc(sum || 'kein fixer Plan')}${t && t.validFrom ? ' · ab ' + K.fmtDate(t.validFrom, true) : ''}</small></div><button class="btn small ghost" data-act="tpl-edit" data-e="${e.id}">Bearbeiten</button></li>`;
+        return `<li><span class="dot" style="background:${safeColor(e.color)}"></span><div class="grow"><b>${esc(e.name)}</b><small>${esc(sum || 'kein fixer Plan')}${t && t.validFrom ? ' · ab ' + K.fmtDate(t.validFrom, true) : ''}</small></div><button class="btn small ghost" data-act="tpl-edit" data-e="${esc(e.id)}">Bearbeiten</button></li>`;
       }).join('')}</ul>
     </section>
 
@@ -137,7 +137,7 @@ act('emp-edit', async ({ e: id }) => {
       <p class="small muted">Urlaub wird in Tagen gerechnet (Vollzeit 25 Tage pro Jahr). Ab dem Eintritt kommt jeden Monat am Eintrittstag ein Zwölftel dazu. Leeres Datum = gleicher Stichtag wie das Zeitkonto. Für neue Mitarbeiter: Eintritt eintragen, Resturlaub 0.</p>
       <label class="check"><input type="checkbox" name="noTimes" ${e.noTimes ? 'checked' : ''}><span>Keine Zeiterfassung (z. B. Chef, selbstständig): nur im Plan, ohne Soll, Stunden, Urlaubskonto und Einladung</span></label>
       <label class="check"><input type="checkbox" name="active" ${e.active !== false ? 'checked' : ''}><span>Aktiv (im Plan anzeigen)</span></label>
-      ${id ? `<hr><div class="btn-row"><button class="btn small" data-act="emp-reset-pw" data-e="${id}">Passwort zurücksetzen</button><button class="btn small danger" data-act="emp-delete" data-e="${id}">Löschen</button></div>` : ''}`,
+      ${id ? `<hr><div class="btn-row"><button class="btn small" data-act="emp-reset-pw" data-e="${esc(id)}">Passwort zurücksetzen</button><button class="btn small danger" data-act="emp-delete" data-e="${esc(id)}">Löschen</button></div>` : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'save' }],
     onAction(v, root) {
       if (!v) return null;
@@ -252,7 +252,7 @@ act('shift-edit', async ({ id }) => {
         <label class="field" id="cc"><span>Eigene Farbe</span><input type="color" name="customColor" value="${esc(cm === 'custom' ? sh.color : '#cfe3f7')}"></label>
       </div>
       <p class="small muted">Automatisch: Samstag gelb, Ende ab 21 Uhr rot, Ende ab 19:30 violett, Beginn bis 9 Uhr grün.</p>
-      ${id ? '<hr><button class="btn small danger" data-act="shift-delete" data-id="' + id + '">Schicht löschen</button>' : ''}`,
+      ${id ? '<hr><button class="btn small danger" data-act="shift-delete" data-id="' + esc(id) + '">Schicht löschen</button>' : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'save' }],
     onOpen(root) {
       const upd = () => { const f = formData(root); const h = K.workHours(f.start, f.end, s); root.querySelector('#calc').textContent = h === null ? '' : `${K.fmtH(h)} h Arbeitszeit (inkl. Pausenregel)`; };
@@ -294,7 +294,7 @@ act('tpl-edit', async ({ e }) => {
   const plan = App.plan.obj;
   const t = alive(plan.template[e]) ? plan.template[e] : { days: [null, null, null, null, null, null, 'status:Frei'] };
   const shifts = shiftsSorted(plan);
-  const opts = (v) => `<option value="">–</option>${shifts.map((sh) => `<option value="${sh.id}" ${v === sh.id ? 'selected' : ''}>${esc(sh.start)}–${esc(sh.end)} (${esc(sh.label)})</option>`).join('')}
+  const opts = (v) => `<option value="">–</option>${shifts.map((sh) => `<option value="${esc(sh.id)}" ${v === sh.id ? 'selected' : ''}>${esc(sh.start)}–${esc(sh.end)} (${esc(sh.label)})</option>`).join('')}
     ${['Frei', 'ZA'].map((st) => `<option value="status:${st}" ${v === 'status:' + st ? 'selected' : ''}>${K.statusLabel(st)}</option>`).join('')}`;
   const r = await openModal({
     title: `Fixer Wochenplan: ${plan.employees[e].name}`,
@@ -376,7 +376,7 @@ act('rec-edit', async ({ id }) => {
       </div>
       <label class="check"><input type="checkbox" name="noPrint" ${r0.noPrint ? 'checked' : ''}><span>Beim Drucken ausblenden</span></label>
       <p class="small muted">Einzelne Termine nimmst du aus, indem du im Plan auf den Tag tippst und das Häkchen beim Event entfernst. Bei „jede 2. Woche“ zählt das Ab-Datum als erster Termin.</p>
-      ${id ? `<hr><button class="btn small danger" data-act="rec-delete" data-id="${id}">Event löschen</button>` : ''}`,
+      ${id ? `<hr><button class="btn small danger" data-act="rec-delete" data-id="${esc(id)}">Event löschen</button>` : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'ok' }],
     onOpen(root) {
       const upd = () => { root.querySelector('[data-nth]').hidden = root.querySelector('[name=every]').value !== 'month'; };

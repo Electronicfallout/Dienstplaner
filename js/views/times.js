@@ -46,7 +46,7 @@ function render(main) {
 
   main.innerHTML = `
     <div class="toolbar">
-      ${admin ? `<div class="nav-group"><label class="select-inline"><span class="sr">Mitarbeiter</span><select data-change="t-emp">${employeesSorted(plan).filter(tracked).map((e) => `<option value="${e.id}" ${e.id === emp.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label><button class="btn small ghost" data-act="t-carry-all">Überträge</button></div>` : `<h2 class="h-inline">Meine Zeiten</h2>`}
+      ${admin ? `<div class="nav-group"><label class="select-inline"><span class="sr">Mitarbeiter</span><select data-change="t-emp">${employeesSorted(plan).filter(tracked).map((e) => `<option value="${esc(e.id)}" ${e.id === emp.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label><button class="btn small ghost" data-act="t-carry-all">Überträge</button></div>` : `<h2 class="h-inline">Meine Zeiten</h2>`}
       <div class="nav-group">
         <button class="icon-btn" data-act="tmonth" data-d="-1" aria-label="Voriger Monat">‹</button>
         <div class="period"><b>${K.MONATE[m - 1]} ${y}</b></div>
@@ -58,7 +58,7 @@ function render(main) {
       <div class="stat"><span>Soll ${K.MONATE[m - 1]}</span><b>${K.fmtH(st.soll)} h</b></div>
       <div class="stat"><span>Ist bis ${cu === t ? 'heute' : 'gestern'}</span><b>${K.fmtH(stToday.istH + stToday.creditH)} h</b><small>Soll bis ${cu === t ? 'heute' : 'gestern'} ${K.fmtH(stToday.soll)} h</small></div>
       <div class="stat"><span>Monat</span><b class="${stToday.saldo >= 0 ? 'pos' : 'neg'}">${stToday.saldo >= 0 ? '+' : ''}${K.fmtH(stToday.saldo)} h</b>${stToday.bonusH ? `<small>davon Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}: +${K.fmtH(stToday.bonusH)} h</small>` : ''}</div>
-      <div class="stat"><span>Zeitkonto gesamt</span><b class="${saldo >= 0 ? 'pos' : 'neg'}">${saldo >= 0 ? '+' : ''}${K.fmtH(saldo)} h</b><small>Gearbeitet ${sg(sd.arbeitH)} · Zuschlag ${sg(sd.bonusH)}${sd.startH ? ` · alt ${sg(sd.startH)}` : ''}<br>Plus-/Minusstunden bis ${cu === t ? 'heute' : 'gestern'}${admin ? `<br><button class="link" data-act="t-carry" data-e="${emp.id}">Alte Überstunden nachtragen${Number(emp.zaStartH) ? ` (${Number(emp.zaStartH) > 0 ? '+' : ''}${K.fmtH(Number(emp.zaStartH))} h)` : ''}</button>` : ''}</small></div>
+      <div class="stat"><span>Zeitkonto gesamt</span><b class="${saldo >= 0 ? 'pos' : 'neg'}">${saldo >= 0 ? '+' : ''}${K.fmtH(saldo)} h</b><small>Gearbeitet ${sg(sd.arbeitH)} · Zuschlag ${sg(sd.bonusH)}${sd.startH ? ` · alt ${sg(sd.startH)}` : ''}<br>Plus-/Minusstunden bis ${cu === t ? 'heute' : 'gestern'}${admin ? `<br><button class="link" data-act="t-carry" data-e="${esc(emp.id)}">Alte Überstunden nachtragen${Number(emp.zaStartH) ? ` (${Number(emp.zaStartH) > 0 ? '+' : ''}${K.fmtH(Number(emp.zaStartH))} h)` : ''}</button>` : ''}</small></div>
     </div>
     ${!admin && todayPlan && todayPlan.type === 'shift' && !todayRec && y === td.y && m === td.m ? `
       <div class="quick">
@@ -146,7 +146,7 @@ async function editTime(d) {
       <div class="row3" ${plannedZA ? 'hidden' : ''}>
         <label class="field"><span>Beginn</span><input type="time" name="start" value="${esc(v0.start || '')}"></label>
         <label class="field"><span>Ende</span><input type="time" name="end" value="${esc(v0.end || '')}"></label>
-        <label class="field"><span>Pause in Minuten</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="leer = automatisch" value="${v0.pause ?? ''}"></label>
+        <label class="field"><span>Pause in Minuten</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="leer = automatisch" value="${esc(v0.pause)}"></label>
       </div>
       <p class="small muted" ${plannedZA ? 'hidden' : ''}>Hast du eine andere Pause gemacht, trag die Minuten bei „Pause“ ein (auch 0). Leer lassen = automatisch ${esc(s.pauseMin)} min ab ${esc(s.pauseAfterH)} h.</p>
       <label class="field"><span>Notiz</span><input name="note" maxlength="100" value="${esc((cur && cur.note) || '')}" placeholder="z. B. länger wegen Event"></label>
@@ -225,7 +225,7 @@ act('t-carry-all', async () => {
     title: 'Überträge für alle',
     body: `<p class="small">Plus- oder Minusstunden jeder Person zum Stichtag. Alles danach rechnet die App selbst. Leere Felder bleiben unverändert.</p>
       <label class="field"><span>Stand am (Beginn des Zeitkontos)</span><input type="date" name="from" value="${esc(def)}"></label>
-      ${emps.map((e) => `<label class="field"><span>${esc(e.name)}</span><input type="text" inputmode="decimal" name="h_${e.id}" placeholder="z. B. 8,6 oder −4" value="${Number(e.zaStartH) ? esc(num(e.zaStartH)) : ''}"></label>`).join('')}`,
+      ${emps.map((e) => `<label class="field"><span>${esc(e.name)}</span><input type="text" inputmode="decimal" name="h_${esc(e.id)}" placeholder="z. B. 8,6 oder −4" value="${Number(e.zaStartH) ? esc(num(e.zaStartH)) : ''}"></label>`).join('')}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'ok' }],
     onAction(v, root) {
       if (!v) return null;
