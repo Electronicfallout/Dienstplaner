@@ -59,14 +59,14 @@ function render(main) {
       </div>
     </div>`;
 
-  const T = (t) => `${K.fmtH(Math.round(t * 10) / 10)} T`;
+  const T = (t) => `${K.fmtNum(Math.round(t * 10) / 10)} T`;
   const accTable = `
     <h3>Urlaubskonto heute (in Tagen)</h3>
     <div class="table-scroll"><table class="times">
       <thead><tr><th>Person</th><th>Urlaubsjahr</th><th class="num">Anspruch pro Jahr</th><th class="num">Stand heute</th><th class="num">Geplant</th><th class="num">Rest</th><th class="num">Kommt noch dazu</th></tr></thead>
       <tbody>${acc.map(({ e, v }) => `<tr><td class="nowrap"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}${e.startDate ? '' : (admin ? ' <span class="gap" title="Eintrittsdatum fehlt">Eintritt?</span>' : '')}</td>
-          <td class="nowrap">${K.fmtDate(v.ujFrom)}–${K.fmtDate(v.ujTo, true)}<small>+ ${K.fmtH(Math.round(v.monatT * 100) / 100)} T pro Monat</small></td>
-          <td class="num"><b>${K.fmtH(v.jahrT)} Tage</b><small>${esc(plan.settings.vacationWeeks)} Wochen</small></td>
+          <td class="nowrap">${K.fmtDate(v.ujFrom)}–${K.fmtDate(v.ujTo, true)}<small>+ ${K.fmtNum(Math.round(v.monatT * 100) / 100)} T pro Monat</small></td>
+          <td class="num"><b>${K.fmtNum(v.jahrT)} Tage</b><small>${esc(plan.settings.vacationWeeks)} Wochen</small></td>
           <td class="num">${T(v.standT)}</td><td class="num">${T(v.geplantT)}</td>
           <td class="num"><b class="${v.restT < 0 ? 'neg' : ''}">${T(v.restT)}</b></td>
           <td class="num">${T(v.nochT)}<small>${v.next ? 'nächste am ' + K.fmtDate(v.next) : ''}</small></td></tr>`).join('')}</tbody>
@@ -203,7 +203,7 @@ act('v-approve', async ({ e, r }) => {
   const empE = { id: e, ...plan.employees[e] };
   const v = vacationAccount(plan, empE);
   const nT = req.kind === 'ZA' ? 0 : days.filter((d) => !K.holidayName(d, plan.settings) && isWorkDay(empE, d)).length;
-  const msg = `${plan.employees[e].name}: ${req.kind || 'Urlaub'} ${K.fmtDate(req.from, true)}–${K.fmtDate(req.to, true)} genehmigen?${nT ? ` Rest danach ${K.fmtH(Math.round((v.restT - nT) * 10) / 10)} Tage.` : ''}`
+  const msg = `${plan.employees[e].name}: ${req.kind || 'Urlaub'} ${K.fmtDate(req.from, true)}–${K.fmtDate(req.to, true)} genehmigen?${nT ? ` Rest danach ${K.fmtNum(Math.round((v.restT - nT) * 10) / 10)} Tage.` : ''}`
     + (away.length ? ` Gleichzeitig weg: ${away.slice(0, 8).join(', ')}${away.length > 8 ? ' …' : ''}` : '');
   if (!(await confirmBox(msg, 'Genehmigen'))) return;
   App.plan.update((p) => writeDays(p, e, days, req.kind || 'Urlaub'));

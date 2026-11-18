@@ -76,10 +76,18 @@ export function fmtDate(s, withYear = false) {
   return `${pad(d)}.${pad(m)}.${withYear ? y : ''}`;
 }
 
+// Stunden als Stunden:Minuten, z. B. 1,67 → „1:40“, −0,5 → „−0:30“
 export function fmtH(h) {
   if (h === null || h === undefined || isNaN(h)) return '–';
-  const r = Math.round(h * 100) / 100;
-  return r.toLocaleString('de-AT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const min = Math.round(Math.abs(h) * 60);
+  if (min === 0) return '0';
+  return `${h < 0 ? '−' : ''}${Math.floor(min / 60)}:${pad(min % 60)}`;
+}
+
+// Zahl mit Komma (z. B. Urlaubstage)
+export function fmtNum(x) {
+  if (x === null || x === undefined || isNaN(x)) return '–';
+  return (Math.round(x * 100) / 100).toLocaleString('de-AT', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 // --- Uhrzeiten ---

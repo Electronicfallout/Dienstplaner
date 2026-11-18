@@ -146,8 +146,9 @@ async function editTime(d) {
       <div class="row3" ${plannedZA ? 'hidden' : ''}>
         <label class="field"><span>Beginn</span><input type="time" name="start" value="${esc(v0.start || '')}"></label>
         <label class="field"><span>Ende</span><input type="time" name="end" value="${esc(v0.end || '')}"></label>
-        <label class="field"><span>Pause (min)</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="auto" value="${v0.pause ?? ''}"></label>
+        <label class="field"><span>Pause in Minuten</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="leer = automatisch" value="${v0.pause ?? ''}"></label>
       </div>
+      <p class="small muted" ${plannedZA ? 'hidden' : ''}>Hast du eine andere Pause gemacht, trag die Minuten bei „Pause“ ein (auch 0). Leer lassen = automatisch ${esc(s.pauseMin)} min ab ${esc(s.pauseAfterH)} h.</p>
       <label class="field"><span>Notiz</span><input name="note" maxlength="100" value="${esc((cur && cur.note) || '')}" placeholder="z. B. länger wegen Event"></label>
       <p class="calc" id="calc"></p>`,
     buttons: [
