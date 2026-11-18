@@ -46,7 +46,7 @@ function render(main) {
 
   main.innerHTML = `
     <div class="toolbar">
-      ${admin ? `<label class="select-inline"><span class="sr">Mitarbeiter</span><select data-change="t-emp">${employeesSorted(plan).filter(tracked).map((e) => `<option value="${e.id}" ${e.id === emp.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label>` : `<h2 class="h-inline">Meine Zeiten</h2>`}
+      ${admin ? `<div class="nav-group"><label class="select-inline"><span class="sr">Mitarbeiter</span><select data-change="t-emp">${employeesSorted(plan).filter(tracked).map((e) => `<option value="${e.id}" ${e.id === emp.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></label><button class="btn small ghost" data-act="t-carry-all">Überträge</button></div>` : `<h2 class="h-inline">Meine Zeiten</h2>`}
       <div class="nav-group">
         <button class="icon-btn" data-act="tmonth" data-d="-1" aria-label="Voriger Monat">‹</button>
         <div class="period"><b>${K.MONATE[m - 1]} ${y}</b></div>
@@ -211,4 +211,38 @@ act('t-carry', async ({ e: id }) => {
   if (!r) return;
   App.plan.update((p) => { p.employees[id] = { ...p.employees[id], zaStartH: r.h, saldoFrom: r.from || null, updatedAt: now() }; });
   toast(`Gespeichert: ${r.h >= 0 ? '+' : ''}${K.fmtH(r.h)} h`);
+});
+
+// Nur Planer: Überträge (alte Plus-/Minusstunden) für alle auf einmal
+act('t-carry-all', async () => {
+  const plan = App.plan.obj;
+  if (!isAdmin()) return;
+  const emps = employeesSorted(plan).filter(tracked);
+  const def = plan.settings.saldoFrom || '';
+  const num = (v) => String(v ?? '').replace('.', ',');
+  const r = await openModal({
+    title: 'Überträge für alle',
+    body: `<p class="small">Plus- oder Minusstunden jeder Person zum Stichtag. Alles danach rechnet die App selbst. Leere Felder bleiben unverändert.</p>
+      <label class="field"><span>Stand am (Beginn des Zeitkontos)</span><input type="date" name="from" value="${esc(def)}"></label>
+      ${emps.map((e) => `<label class="field"><span>${esc(e.name)}</span><input type="text" inputmode="decimal" name="h_${e.id}" placeholder="z. B. 8,6 oder −4" value="${Number(e.zaStartH) ? esc(num(e.zaStartH)) : ''}"></label>`).join('')}`,
+    buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'ok' }],
+    onAction(v, root) {
+      if (!v) return null;
+      const f = formData(root);
+      if (!f.from) { toast('Bitte den Stichtag angeben', 'error'); return false; }
+      const out = {};
+      for (const e of emps) {
+        const raw = String(f['h_' + e.id] || '').replace('−', '-').replace(',', '.').trim();
+        if (raw === '') continue;
+        const h = Number(raw);
+        if (!Number.isFinite(h)) { toast(`${e.name}: bitte eine Zahl eingeben`, 'error'); return false; }
+        out[e.id] = h;
+      }
+      return { from: f.from, out };
+    },
+  });
+  if (!r) return;
+  const t = now();
+  App.plan.update((p) => { for (const [id, h] of Object.entries(r.out)) p.employees[id] = { ...p.employees[id], zaStartH: h, saldoFrom: r.from, updatedAt: t }; });
+  toast(`${Object.keys(r.out).length} Überträge gespeichert`);
 });
