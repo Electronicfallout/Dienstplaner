@@ -109,13 +109,32 @@ function render(main) {
     </table></div>
     <div class="legend"><span><i class="v1"></i>1 Tag</span><span><i class="v2"></i>2–3 Tage</span><span><i class="v3"></i>ganze Woche</span><span><i class="k"></i>Krankenstand</span></div>`;
 
+  // Alle Urlaube des Jahres als Liste (zusammenhängende Tage zusammengefasst)
+  const all = [];
+  for (const e of employeesSorted(plan).filter(tracked)) {
+    let cur = null;
+    for (let d = `${y}-01-01`; d <= `${y}-12-31`; d = K.addDays(d, 1)) {
+      const pe = planEntry(plan, d, e.id);
+      const st = pe && pe.kind === 'status' && pe.status === 'Urlaub' ? pe.status : null;
+      if (st && cur && cur.st === st && K.dayNum(d) - K.dayNum(cur.to) <= 2) { cur.to = d; cur.n++; continue; }
+      if (st) { cur = { e, st, from: d, to: d, n: 1 }; all.push(cur); }
+    }
+  }
+  all.sort((a, b) => a.from.localeCompare(b.from) || a.e.name.localeCompare(b.e.name));
+  const today = K.today();
+  const fmtR = (r) => (r.from === r.to ? `${K.WOCHENTAGE[K.weekday(r.from)]} ${K.fmtDate(r.from, true)}` : `${K.fmtDate(r.from)} – ${K.fmtDate(r.to, true)}`);
+  const allList = admin ? `<section class="card"><div class="card-head"><h2>Alle Urlaube ${y}</h2></div>
+    ${all.length ? `<ul class="list vac-list">${all.map((r) => `<li class="${r.to < today ? 'past' : r.from <= today ? 'now' : ''}"><span class="dot" style="background:${r.e.color}"></span><div class="grow"><b>${esc(r.e.name)}</b><small>${fmtR(r)}</small></div><span class="small">${r.n} ${r.n === 1 ? 'Tag' : 'Tage'}${r.from <= today && r.to >= today ? ' · <b>jetzt</b>' : ''}</span></li>`).join('')}</ul>` : '<p class="muted">Noch keine Urlaube eingetragen.</p>'}
+  </section>` : '';
+
   const myDays = !admin ? `<h3>Eingetragene Urlaubstage ${y}</h3><p>${ranges(acc[0].v.tage).join(', ') || '<span class="muted">Keine</span>'}</p>` : '';
 
   main.innerHTML = toolbar
     + (admin && open.length ? reqList(open, `Offene Anträge (${open.length})`) : '')
     + accTable
     + (admin ? overview : myDays)
-    + (admin ? reqList(reqs.filter((r) => r.status !== 'offen' && r.to >= `${y}-01-01` && r.from <= `${y}-12-31`), 'Erledigte Anträge') : reqList(reqs, 'Meine Anträge'));
+    + (admin ? reqList(reqs.filter((r) => r.status !== 'offen' && r.to >= `${y}-01-01` && r.from <= `${y}-12-31`), 'Erledigte Anträge') : reqList(reqs, 'Meine Anträge'))
+    + allList;
 }
 
 act('vyear', ({ d }) => { App.vyear += +d; render(document.getElementById('main')); });
