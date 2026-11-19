@@ -74,7 +74,7 @@ function render(main) {
         const rec = x.tr ? (x.tr.type === 'shift' ? `${esc(x.tr.text)} <small>${x.tr.pause} min Pause</small>` : esc(x.tr.text)) : (x.date <= t && x.pr && x.pr.type === 'shift' ? '<span class="muted">nicht erfasst</span>' : x.date <= t && x.pr && x.pr.status === 'ZA' ? '<span class="muted">bitte bestätigen</span>' : '');
         const note = x.tr && times[x.date] && times[x.date].note ? `<small class="note">${esc(times[x.date].note)}</small>` : '';
         const h = x.ist + x.credit;
-        const diff = x.tr && x.pr ? x.tr.workH - x.pr.workH : 0;
+        const diff = x.tr && x.tr.type === 'shift' && x.pr && x.pr.type === 'shift' ? x.tr.workH - x.pr.workH : 0; // nur echte Arbeitszeit gegen geplanten Dienst
         if (!x.pr && !x.tr && wd === 6) return '';
         return `<tr class="${x.date === t ? 'today' : ''} ${canEdit ? 'clickable' : ''} ${wd === 5 ? 'sat' : ''}" ${canEdit ? `data-act="t-edit" data-d="${x.date}"` : ''}>
           <td><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(x.date)}</td><td>${pl}</td><td>${rec}${note}</td>
