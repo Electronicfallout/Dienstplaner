@@ -237,6 +237,7 @@ table.times tr.today td { background: var(--today); }
 table.times tr.sat td { background: var(--sat); }
 table.times tfoot td { background: var(--surface-2); font-weight: 600; }
 table.times { width: 100%; }
+table.times tr.week-sum td { background: var(--surface-2); border-bottom: 2px solid var(--line); font-size: .9rem; }
 .vac-list li.past { opacity: .55; }
 .vac-list li.now { background: var(--today); }
 .saldo-detail { margin-top: 12px; padding: 10px 12px; }

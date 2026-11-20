@@ -106,9 +106,12 @@ function render(main) {
     let h = 0, soll = 0, credit = 0;
     for (let i = 0; i < 7; i++) {
       const d = K.addDays(mon, i);
-      soll += sollAt(plan, e, d);
+      const sd = sollAt(plan, e, d);
+      soll += sd;
       if (!visible(d)) continue;
       const r = resolve(plan, planEntry(plan, d, e.id), e, d);
+      // Zeitausgleich zählt als Minus in Höhe der Dienststunden (wie in der Zeiterfassung)
+      if (r && r.type === 'status' && r.status === 'ZA' && !K.holidayName(d, plan.settings)) { soll -= sd; credit -= r.creditH; continue; }
       if (r) { h += r.workH; credit += r.creditH; }
     }
     return { h, soll, credit };

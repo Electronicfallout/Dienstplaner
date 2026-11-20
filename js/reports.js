@@ -157,6 +157,7 @@ function timesPage(plan, e, y, m) {
   const until = monthEnd < cu ? monthEnd : cu; // laufender Monat: nur bis gestern (bzw. heute nach Dienstende)
   const st = monthStats(plan, e, y, m, times, until);
   const rows = [];
+  const sd = saldoDetail(plan, e, until, times);
   for (const x of st.tage) {
     const wd = K.weekday(x.date);
     if (!x.pr && !x.tr && !x.soll && wd === 6) continue;
@@ -174,8 +175,17 @@ function timesPage(plan, e, y, m) {
       { content: x.bonus ? '+' + H(x.bonus) : '', styles: { halign: 'right' } },
       { content: Math.abs(d) > 0.004 ? sgn(d) : '', styles: { halign: 'right' } },
     ]);
+    if (wd === 6 || x.date === st.tage[st.tage.length - 1].date) {
+      const mon = K.addDays(x.date, -wd);
+      const w = sd.weeks.find((v) => v.mon === mon);
+      if (w) {
+        const wi = w.ist + w.credit, wdl = wi - w.za - w.soll + w.bonus;
+        const g = { fillColor: [232, 236, 241], fontStyle: 'bold' };
+        rows.push([{ content: `KW ${K.isoWeek(mon)}`, styles: g }, { content: `Woche ${K.fmtDate(mon)}–${K.fmtDate(K.addDays(mon, 6))}${until < K.addDays(mon, 6) ? ` (bis ${K.fmtDate(until)})` : ''}`, colSpan: 2, styles: g },
+          { content: H(w.soll), styles: { ...g, halign: 'right' } }, { content: H(wi), styles: { ...g, halign: 'right' } }, { content: w.za ? '-' + H(w.za) : '', styles: { ...g, halign: 'right' } }, { content: w.bonus ? '+' + H(w.bonus) : '', styles: { ...g, halign: 'right' } }, { content: sgn(wdl), styles: { ...g, halign: 'right' } }]);
+      }
+    }
   }
-  const sd = saldoDetail(plan, e, until, times);
   const tot = st.istH + st.creditH;
   const zaSum = st.tage.reduce((a, t) => a + t.za, 0);
   return {

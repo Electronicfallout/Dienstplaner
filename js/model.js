@@ -200,7 +200,7 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
     const planWork = pr ? pr.workH : 0;
     // vom Mitarbeiter als Zeitausgleich bestätigt, obwohl ein Dienst geplant war: Dienststunden gelten als ZA
     const trZA = tr && tr.type === 'status' && tr.status === 'ZA' && pr && pr.type === 'shift';
-    const credit = trZA ? planWork : pr ? pr.creditH : 0;
+    let credit = trZA ? planWork : pr ? pr.creditH : 0;
     const ist = trZA ? 0 : tr ? tr.workH : planWork;
     r.soll += soll;
     r.planH += planWork;
@@ -216,8 +216,8 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
     }
     if (trZA) r.zaTage++;
     const za = (trZA || (pr && pr.type === 'status' && pr.status === 'ZA')) && !holidayName(d, s) ? credit : 0;
-    // Zeitausgleich: der Tag zählt genau mit den Stunden des freigenommenen Dienstes (Soll = ZA-Stunden, ± = −Dienstzeit)
-    if (za && soll > 0) { r.soll += za - soll; soll = za; }
+    // Zeitausgleich: der Tag zählt nur als Minus in Höhe des freigenommenen Dienstes (kein Soll, kein Ist, ± = −Dienstzeit)
+    if (za) { r.soll -= soll; soll = 0; r.creditH -= credit; credit = 0; }
     r.tage.push({ date: d, pe, pr, tr, soll, ist, credit, za, bonus });
   }
   r.saldo = r.tage.reduce((a, t) => a + t.ist + t.credit - t.za - t.soll + t.bonus, 0);

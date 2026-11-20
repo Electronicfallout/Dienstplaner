@@ -76,10 +76,18 @@ function render(main) {
         const note = x.tr && times[x.date] && times[x.date].note ? `<small class="note">${esc(times[x.date].note)}</small>` : '';
         const h = x.ist + x.credit;
         const diff = x.tr && x.tr.type === 'shift' && x.pr && x.pr.type === 'shift' ? x.tr.workH - x.pr.workH : 0; // nur echte Arbeitszeit gegen geplanten Dienst
-        if (!x.pr && !x.tr && wd === 6) return '';
-        return `<tr class="${x.date === t ? 'today' : ''} ${canEdit ? 'clickable' : ''} ${wd === 5 ? 'sat' : ''}" ${canEdit ? `data-act="t-edit" data-d="${x.date}"` : ''}>
+        const dayRow = !x.pr && !x.tr && wd === 6 ? '' : `<tr class="${x.date === t ? 'today' : ''} ${canEdit ? 'clickable' : ''} ${wd === 5 ? 'sat' : ''}" ${canEdit ? `data-act="t-edit" data-d="${x.date}"` : ''}>
           <td><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(x.date)}</td><td>${pl}</td><td>${rec}${note}</td>
-          <td class="num">${h ? K.fmtH(h) : ''}${diff ? `<small>${diffBadge(diff)}</small>` : ''}${x.bonus ? `<small title="Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}">+${K.fmtH(x.bonus)} Z</small>` : ''}</td></tr>`;
+          <td class="num">${x.za ? `<span class="neg">−${K.fmtH(x.za)}</span><small>Zeitausgleich</small>` : h ? K.fmtH(h) : ''}${diff ? `<small>${diffBadge(diff)}</small>` : ''}${x.bonus ? `<small title="Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}">+${K.fmtH(x.bonus)} Z</small>` : ''}</td></tr>`;
+        // Wochensumme nach dem Sonntag (bzw. am Monatsende): ganze Woche, gerechnet bis gestern
+        if (wd !== 6 && x.date !== st.tage[st.tage.length - 1].date) return dayRow;
+        const mon = K.addDays(x.date, -wd);
+        const w = sd.weeks.find((v) => v.mon === mon);
+        if (!w) return dayRow;
+        const ist = w.ist + w.credit, wd2 = ist - w.za - w.soll + w.bonus;
+        const part = cu < K.addDays(mon, 6) ? ` <small>bis ${K.fmtDate(cu)}</small>` : '';
+        return dayRow + `<tr class="week-sum"><td colspan="3"><b>Woche KW ${K.isoWeek(mon)}</b> <span class="muted">${K.fmtDate(mon)}–${K.fmtDate(K.addDays(mon, 6))}</span>${part}<small>Ist ${K.fmtH(ist)} / Soll ${K.fmtH(w.soll)}${w.za ? ` · Zeitausgleich −${K.fmtH(w.za)}` : ''}${w.bonus ? ` · Zuschlag +${K.fmtH(w.bonus)}` : ''}</small></td>
+          <td class="num"><b class="${wd2 >= 0 ? 'pos' : 'neg'}">${Math.abs(wd2) < 0.01 ? '±0' : (wd2 > 0 ? '+' : '') + K.fmtH(wd2)}</b></td></tr>`;
       }).join('')}</tbody>
       <tfoot><tr><td colspan="3">Summe Ist / Soll</td><td class="num"><b>${K.fmtH(st.istH + st.creditH)}</b><small>/ ${K.fmtH(st.soll)}</small>${diffBadge(st.istH + st.creditH - st.soll) ? `<small>${diffBadge(st.istH + st.creditH - st.soll)}</small>` : ''}${st.bonusH ? `<small>+${K.fmtH(st.bonusH)} Z</small>` : ''}</td></tr></tfoot>
     </table></div>
