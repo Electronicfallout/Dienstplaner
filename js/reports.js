@@ -180,7 +180,7 @@ function timesPage(plan, e, y, m) {
   const zaSum = st.tage.reduce((a, t) => a + t.za, 0);
   return {
     title: `Zeiterfassung ${K.MONATE[m - 1]} ${y}: ${e.name}${until < monthEnd ? ` (bis ${K.fmtDate(until)})` : ''}`,
-    sub: `${H(Number(e.weeklyHours) || 0)} h/Woche${times ? '' : ' · Hinweis: erfasste Zeiten auf diesem Gerät nicht lesbar, es zählen die geplanten Zeiten'} · Ist = gearbeitet plus Feiertag/Urlaub/Krankenstand/Zeitausgleich. Zuschlag ab ${plan.settings.nightFrom || '21:00'} (Faktor ${K.fmtNum(Number(plan.settings.nightFactor ?? 1.5))}).`,
+    sub: `${H(Number(e.weeklyHours) || 0)} h/Woche${times ? '' : ' · Hinweis: erfasste Zeiten auf diesem Gerät nicht lesbar, es zählen die geplanten Zeiten'} · Ist = gearbeitet plus Feiertag/Krankenstand/Zeitausgleich; Urlaubstage haben weder Soll noch Ist. Zuschlag ab ${plan.settings.nightFrom || '21:00'} (Faktor ${K.fmtNum(Number(plan.settings.nightFactor ?? 1.5))}).`,
     blocks: [
       { head: ['Tag', 'Geplant', 'Erfasst', 'Soll', 'Ist', 'ZA', 'Zuschl.', '±'], body: rows,
         foot: ['Summe', '', '', { content: H(st.soll), styles: { halign: 'right' } }, { content: H(tot), styles: { halign: 'right' } }, { content: zaSum ? '-' + H(zaSum) : '', styles: { halign: 'right' } }, { content: st.bonusH ? '+' + H(st.bonusH) : '', styles: { halign: 'right' } }, { content: sgn(st.saldo), styles: { halign: 'right' } }],

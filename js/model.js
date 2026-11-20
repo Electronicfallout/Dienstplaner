@@ -56,10 +56,17 @@ function isEFS(plan, emp, d, times) {
   if (tr && alive(tr)) return tr.status === EFS; // vom Mitarbeiter/Planer in der Zeiterfassung hinterlegt
   const pe = planEntry(plan, d, emp.id); return !!(pe && pe.kind === 'status' && pe.status === EFS);
 }
+function isUrlaub(plan, emp, d, times) {
+  const tr = times && times[d];
+  if (tr && alive(tr) && !tr.status) return false; // trotzdem gearbeitet: normal rechnen
+  const pe = planEntry(plan, d, emp.id);
+  return !!(pe && pe.kind === 'status' && pe.status === 'Urlaub' && (pe.credit === undefined || pe.credit === null || pe.credit === ''));
+}
 export function sollAt(plan, emp, date, settings = plan.settings, times = null) {
   const base = sollDay(emp, date, settings);
   if (!employed(emp, date) || emp.noTimes) return 0;
   if (isEFS(plan, emp, date, times)) return 0;
+  if (isUrlaub(plan, emp, date, times)) return 0;
   if (weekday(date) === 5) {
     let n = 0;
     for (let i = 1; i <= 5; i++) { const d = addDays(date, -i); if (employed(emp, d) && isEFS(plan, emp, d, times)) n++; }
@@ -123,6 +130,8 @@ export function shiftColor(plan, shiftId, start, end, date) {
 // Wer am Feiertag arbeitet, bekommt die Arbeitszeit zusätzlich (Plusstunden).
 export function resolve(plan, entry, emp, date) {
   const r = resolveRaw(plan, entry, emp, date);
+  // Urlaub läuft nur über das Urlaubskonto: weder Soll noch Gutschrift (siehe sollAt)
+  if (r && r.type === 'status' && r.status === 'Urlaub' && (entry.credit === undefined || entry.credit === null || entry.credit === '')) return { ...r, creditH: 0 };
   if (!r || !emp || !holidayName(date, plan.settings)) return r;
   const hol = sollDay(emp, date, plan.settings);
   if (r.type === 'status' && entry.credit !== undefined && entry.credit !== null && entry.credit !== '') return r;
@@ -201,7 +210,7 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
     r.bonusH += bonus;
     if (tr) { r.erfasstTage++; if (Math.abs(tr.workH - planWork) > 0.01) r.abweichTage++; }
     if (pr && pr.type === 'status') {
-      if (pr.status === 'Urlaub' && soll > 0) r.urlaubTage++;
+      if (pr.status === 'Urlaub' && sollDay(emp, d, s) > 0) r.urlaubTage++;
       if (pr.status === 'Krankenstand' && soll > 0) r.krankTage++;
       if (pr.status === 'ZA') r.zaTage++;
     }

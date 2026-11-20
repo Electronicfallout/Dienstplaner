@@ -1,2 +1,2 @@
 // Muss zur VERSION in sw.js passen (wird in den Einstellungen angezeigt)
-export const APP_VERSION = 'dp-v53';
+export const APP_VERSION = 'dp-v54';
