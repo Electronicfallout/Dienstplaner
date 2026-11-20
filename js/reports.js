@@ -160,13 +160,13 @@ function timesPage(plan, e, y, m) {
   const sd = saldoDetail(plan, e, until, times);
   for (const x of st.tage) {
     const wd = K.weekday(x.date);
-    if (!x.pr && !x.tr && !x.soll && wd === 6) continue;
+    const skip = !x.pr && !x.tr && !x.soll && wd === 6;
     const pl = x.pr ? (x.pr.type === 'shift' ? `${x.pr.text} (${H(x.pr.workH)})` : x.pr.text) : '';
     const rec = times && alive(times[x.date]) ? times[x.date] : null;
     const er = x.tr ? (x.tr.type === 'shift' ? `${x.tr.text}, ${x.tr.pause} min Pause` : x.tr.text) : (x.pr && x.pr.type === 'shift' ? (times ? 'nicht erfasst' : 'wie geplant') : '');
     const h = x.ist + x.credit;
     const d = h - x.za - x.soll + x.bonus;
-    rows.push([
+    if (!skip) rows.push([
       { content: `${K.WOCHENTAGE[wd]} ${K.fmtDate(x.date)}`, styles: wd >= 5 ? { fillColor: [246, 246, 240] } : {} },
       pl, er + (rec && rec.note ? ` – ${clean(rec.note)}` : ''),
       { content: H(x.soll), styles: { halign: 'right' } },
