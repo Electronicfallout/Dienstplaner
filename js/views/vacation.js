@@ -125,7 +125,7 @@ function render(main) {
   const today = K.today();
   const fmtR = (r) => (r.from === r.to ? `${K.WOCHENTAGE[K.weekday(r.from)]} ${K.fmtDate(r.from, true)}` : `${K.fmtDate(r.from)} – ${K.fmtDate(r.to, true)}`);
   const allList = admin ? `<section class="card"><div class="card-head"><h2>Alle Urlaube ${y}</h2></div>
-    ${all.length ? `<ul class="list vac-list">${all.map((r) => `<li class="${r.to < today ? 'past' : r.from <= today ? 'now' : ''}"><span class="dot" style="background:${r.e.color}"></span><div class="grow"><b>${esc(r.e.name)}</b><small>${fmtR(r)}</small></div><span class="small">${r.n} ${r.n === 1 ? 'Tag' : 'Tage'}${r.from <= today && r.to >= today ? ' · <b>jetzt</b>' : ''}</span></li>`).join('')}</ul>` : '<p class="muted">Noch keine Urlaube eingetragen.</p>'}
+    ${all.length ? [['Geplant', all.filter((r) => r.to >= today)], ['Bereits genommen', all.filter((r) => r.to < today).reverse()]].filter(([, l]) => l.length).map(([h, l]) => `<h3>${h} (${l.reduce((a, r) => a + r.n, 0)} Tage)</h3><ul class="list vac-list">${l.map((r) => `<li class="${r.to < today ? 'past' : r.from <= today ? 'now' : ''}"><span class="dot" style="background:${r.e.color}"></span><div class="grow"><b>${esc(r.e.name)}</b><small>${fmtR(r)}</small></div><span class="small">${r.n} ${r.n === 1 ? 'Tag' : 'Tage'}${r.from <= today && r.to >= today ? ' · <b>jetzt</b>' : ''}</span></li>`).join('')}</ul>`).join('') : '<p class="muted">Noch keine Urlaube eingetragen.</p>'}
   </section>` : '';
 
   const myDays = !admin ? `<h3>Eingetragene Urlaubstage ${y}</h3><p>${ranges(acc[0].v.tage).join(', ') || '<span class="muted">Keine</span>'}</p>` : '';
