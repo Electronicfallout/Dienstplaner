@@ -280,10 +280,11 @@ table.yearview thead th { font-size: .7rem; font-weight: 500; color: var(--muted
 table.yearview tbody th { padding: 0 10px 0 8px; font-size: .85rem; white-space: nowrap; text-align: left; font-weight: 500; }
 table.yearview .sticky { position: sticky; left: 0; background: var(--surface); z-index: 1; }
 table.yearview td { width: 12px; min-width: 12px; border-left: 1px solid var(--surface); border-bottom: 2px solid var(--surface); background: var(--surface-2); }
-.yearview .v1, .legend .v1 { background: color-mix(in srgb, #2e9d5b 35%, var(--surface)); }
-.yearview .v2, .legend .v2 { background: color-mix(in srgb, #2e9d5b 65%, var(--surface)); }
-.yearview .v3, .legend .v3 { background: #2e9d5b; }
-.yearview .k, .legend .k { background: color-mix(in srgb, #c0392b 55%, var(--surface)); }
+.yearview .v1, .legend .v1 { background: color-mix(in srgb, var(--c, #2e9d5b) 30%, var(--surface)); }
+.yearview .v2, .legend .v2 { background: color-mix(in srgb, var(--c, #2e9d5b) 62%, var(--surface)); }
+.yearview .v3, .legend .v3 { background: var(--c, #2e9d5b); }
+/* Krankenstand: eigene Farbe (rot gestreift), unabhängig von der Personenfarbe */
+.yearview .k, .legend .k { background: repeating-linear-gradient(135deg, #c0392b 0 3px, #f2b8b0 3px 6px); }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); margin-top: 8px; }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -2px; margin-right: 4px; }
 

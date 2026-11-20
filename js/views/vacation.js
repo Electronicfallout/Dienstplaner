@@ -95,7 +95,7 @@ function render(main) {
     <h3>Wer ist wann weg?</h3>
     <div class="table-scroll"><table class="yearview">
       <thead><tr><th class="sticky"></th>${weeks.map((w) => { const p = K.parseIso(K.addDays(w, 3)); const first = p.d <= 7; return `<th title="KW ${K.isoWeek(w)}">${first && p.y === y ? K.MONATE[p.m - 1].slice(0, 3) : ''}</th>`; }).join('')}</tr></thead>
-      <tbody>${employeesSorted(plan).map((e) => `<tr><th class="sticky"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>${weeks.map((w) => {
+      <tbody>${employeesSorted(plan).map((e) => `<tr style="--c:${esc(e.color || '#2e9d5b')}"><th class="sticky"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>${weeks.map((w) => {
         let u = 0, k = 0;
         const list = [];
         for (let i = 0; i < 6; i++) {
@@ -108,7 +108,7 @@ function render(main) {
         return `<td class="${cls}" title="KW ${K.isoWeek(w)}: ${u ? u + ' Tage Urlaub/ZA' : ''}${k ? ' ' + k + ' Tage krank' : ''}"></td>`;
       }).join('')}</tr>`).join('')}</tbody>
     </table></div>
-    <div class="legend"><span><i class="v1"></i>1 Tag</span><span><i class="v2"></i>2–3 Tage</span><span><i class="v3"></i>ganze Woche</span><span><i class="k"></i>Krankenstand</span></div>`;
+    <div class="legend" style="--c:#5b6b7d"><span><i class="v1"></i>1 Tag</span><span><i class="v2"></i>2–3 Tage</span><span><i class="v3"></i>ganze Woche</span><span><i class="k"></i>Krankenstand</span><span class="muted">(Urlaub in der Farbe der Person)</span></div>`;
 
   // Alle Urlaube des Jahres als Liste (zusammenhängende Tage zusammengefasst)
   const all = [];
