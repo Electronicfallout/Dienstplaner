@@ -421,6 +421,38 @@ function calcText(start, end, pause, s) {
 
 // ---------- Tag bearbeiten (Events, Anmerkung, Feiertag) ----------
 
+// Ganzen Tag schließen (z. B. 24.12., 31.12.): zählt wie ein Feiertag (Tagessoll gutgeschrieben, keine Besetzungsprüfung),
+// eingetragene Dienste an dem Tag werden entfernt. Wieder öffnen hebt das auf (die Dienste kommen per „Rückgängig“ zurück).
+function toggleClosed(d, close) {
+  const plan = App.plan.obj;
+  const autoHol = K.holidaysAT(K.parseIso(d).y)[d] || '';
+  const before = { hol: plan.settings.holidays ? plan.settings.holidays[d] : undefined, entries: {} };
+  let n = 0;
+  App.plan.update((p) => {
+    const t = now();
+    const hol = { ...(p.settings.holidays || {}) };
+    if (close) {
+      if (autoHol) delete hol[d]; else hol[d] = 'Geschlossen';
+      for (const e of Object.keys(p.employees)) {
+        const k = entryKey(d, e);
+        const cur = p.entries[k];
+        if (alive(cur) && cur.kind === 'shift') { before.entries[e] = { ...cur }; setEntry(p, d, e, null, t); n++; }
+      }
+    } else if (autoHol) hol[d] = null; else delete hol[d];
+    p.settings = { ...p.settings, holidays: hol, updatedAt: t };
+  });
+  toast(close ? `${K.fmtDate(d, true)} geschlossen${n ? `, ${n} Dienst${n > 1 ? 'e' : ''} entfernt` : ''}` : `${K.fmtDate(d, true)} wieder offen`, 'info', {
+    label: 'Rückgängig',
+    fn: () => App.plan.update((p) => {
+      const t = now();
+      const hol = { ...(p.settings.holidays || {}) };
+      if (before.hol === undefined) delete hol[d]; else hol[d] = before.hol;
+      p.settings = { ...p.settings, holidays: hol, updatedAt: t };
+      for (const [e, rec] of Object.entries(before.entries)) { const { updatedAt, ...r } = rec; setEntry(p, d, e, r, t); }
+    }),
+  });
+}
+
 act('edit-day', async ({ d }) => {
   const plan = App.plan.obj;
   const day = alive(plan.days[d]) ? plan.days[d] : {};
@@ -439,9 +471,12 @@ act('edit-day', async ({ d }) => {
       <label class="field"><span>Anmerkung</span><input name="note" value="${esc(day.note || '')}" maxlength="120" placeholder="z. B. Mitarbeiterbesprechung"></label>
       <label class="check"><input type="checkbox" name="hol" ${holName ? 'checked' : ''}><span>Feiertag (Shop zu, kein Soll)</span></label>
       <label class="field"><span>Name des Feiertags</span><input name="holName" value="${esc(holName || autoHol)}" maxlength="40"></label>`,
-    buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'save' }],
+    buttons: [
+      { label: holName ? '🔓 Wieder öffnen' : '🔒 Tag schließen', value: 'close', kind: 'ghost' },
+      { label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'save' }],
     onAction(v, root) {
       if (!v) return null;
+      if (v === 'close') { toggleClosed(d, !holName); return 'ok'; }
       const f = formData(root);
       const t = now();
       App.plan.update((p) => {
