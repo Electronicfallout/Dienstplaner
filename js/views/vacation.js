@@ -55,6 +55,7 @@ function render(main) {
         <button class="icon-btn" data-act="vyear" data-d="1" aria-label="Nächstes Jahr">›</button>
       </div>
       <div class="nav-group">
+        ${admin ? '<button class="btn small ghost" data-act="vac-pdf">PDF</button>' : ''}
         ${admin ? '<button class="btn small primary" data-act="v-enter">Urlaub eintragen</button>' : '<button class="btn small primary" data-act="v-request">Urlaub beantragen</button>'}
       </div>
     </div>`;

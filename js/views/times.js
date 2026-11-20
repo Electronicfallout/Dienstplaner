@@ -51,6 +51,7 @@ function render(main) {
         <button class="icon-btn" data-act="tmonth" data-d="-1" aria-label="Voriger Monat">‹</button>
         <div class="period"><b>${K.MONATE[m - 1]} ${y}</b></div>
         <button class="icon-btn" data-act="tmonth" data-d="1" aria-label="Nächster Monat">›</button>
+        <button class="btn small ghost" data-act="times-pdf">PDF</button>
       </div>
     </div>
     ${accessNote}
