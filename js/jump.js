@@ -20,10 +20,21 @@ export function maybeJump(main) {
   requestAnimationFrame(() => {
     const day = main.querySelector('[data-day].today');
     if (day) {
-      const top = day.getBoundingClientRect().top + window.scrollY;
+      // Monatstabelle scrollt in sich selbst (feste Höhe): zuerst darin zur Zeile scrollen
+      const box = day.closest('.table-scroll');
+      if (box && box.scrollHeight > box.clientHeight + 2) {
+        const th = box.querySelector('thead');
+        const off = day.getBoundingClientRect().top - box.getBoundingClientRect().top - (th ? th.getBoundingClientRect().height : 0) - 8;
+        box.scrollTop += off - day.getBoundingClientRect().height * 2;
+      }
       const head = (document.querySelector('.topbar') || { offsetHeight: 0 }).offsetHeight;
-      const thead = day.closest('table') ? (day.closest('table').querySelector('thead') || { offsetHeight: 0 }).offsetHeight : 0;
-      window.scrollTo(0, Math.max(0, top - head - thead - 56));
+      if (box && box.scrollHeight > box.clientHeight + 2) {
+        window.scrollTo(0, Math.max(0, box.getBoundingClientRect().top + window.scrollY - head - 8));
+      } else {
+        const top = day.getBoundingClientRect().top + window.scrollY;
+        const thead = day.closest('table') ? (day.closest('table').querySelector('thead') || { offsetHeight: 0 }).offsetHeight : 0;
+        window.scrollTo(0, Math.max(0, top - head - thead - 56));
+      }
     }
     // Spalte der eigenen Person (Plan/Monat) bzw. aktuelle Woche (Urlaubsübersicht) sichtbar machen
     let scroller = null, me = null;
