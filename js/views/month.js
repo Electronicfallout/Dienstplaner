@@ -1,7 +1,7 @@
 // Monatsübersicht mit Summen, Druck und Excel-Export.
 
 import { App, registerView, isAdmin, timesOf } from '../app.js';
-import { esc, act, loadScript, toast } from '../ui.js';
+import { esc, safeColor, act, loadScript, toast } from '../ui.js';
 import * as K from '../calc.js';
 import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished, eventsOn, coverageGaps } from '../model.js';
 import { cellHtml, editEntry, diffBadge, myCellAct } from './plan.js';
@@ -64,7 +64,7 @@ function render(main) {
     </div>
     ${proposalsHtml(plan)}
     <div class="table-scroll pinch"><table class="plan month" style="zoom:${zoom}">
-      <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>`).join('')}<th class="evcol">Events im Shop</th><th class="evcol">Anmerkung</th></tr></thead>
+      <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${safeColor(e.color)}"></span>${esc(e.name)}</th>`).join('')}<th class="evcol">Events im Shop</th><th class="evcol">Anmerkung</th></tr></thead>
       <tbody>${days.map((d) => {
         const wd = K.weekday(d);
         const hol = K.holidayName(d, plan.settings);
@@ -76,7 +76,7 @@ function render(main) {
             if (!admin && !isPublished(plan, d)) return '<td class="muted">–</td>';
             const pe = planEntry(plan, d, e.id);
             const mine = admin ? '' : myCellAct(plan, d, e, meId);
-            return `<td class="${e.id === meId ? 'me' : ''} ${admin || mine ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${e.id}"` : mine}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
+            return `<td class="${e.id === meId ? 'me' : ''} ${admin || mine ? 'clickable' : ''}" ${admin ? `data-act="edit-entry-m" data-d="${d}" data-e="${esc(e.id)}"` : mine}>${cellHtml(resolve(plan, pe, e, d), pe, { compact: true })}</td>`;
           }).join('')}
           <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${[hol && esc(hol), ...eventsOn(plan, d).map((e) => `<span class="${e.noPrint ? 'noprint' : ''}">${e.recurring ? '↻' : '🎲'} ${esc(e.title)}</span>`)].filter(Boolean).join(' · ')}</td>
           <td class="ev ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}>${day.note ? esc(day.note) : ''}</td>

@@ -107,7 +107,7 @@ function changeList(limitDays = 60) {
 
 export async function openNotices() {
   const c = collect();
-  const item = (n, unread) => `<li class="${unread ? 'unread' : ''} ${n.view ? 'clickable' : ''}" ${n.view ? `data-go="${n.view}" data-emp="${n.emp || ''}" data-date="${n.date || ''}"` : ''}>
+  const item = (n, unread) => `<li class="${unread ? 'unread' : ''} ${n.view ? 'clickable' : ''}" ${n.view ? `data-go="${esc(n.view)}" data-emp="${esc(n.emp)}" data-date="${esc(n.date)}"` : ''}>
     <span class="ic">${n.icon}</span><div class="grow">${esc(n.text)}${n.sub ? `<small>${esc(n.sub)}</small>` : ''}${n.at ? `<small>${new Date(n.at).toLocaleString('de-AT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small>` : ''}</div></li>`;
   await openModal({
     title: 'Hinweise',

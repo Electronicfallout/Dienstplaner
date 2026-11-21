@@ -63,11 +63,11 @@ async function start() {
       if (remote) { App.plan.obj = remote.obj; App.plan.rev = remote.rev; }
     } catch (e) {
       if (e.auth) return authBroken(e);
-      if (!cached) return screen(`<div class="center-card"><h2>Keine Verbindung</h2><p>${esc(e.message)}</p><button class="btn primary" onclick="location.reload()">Nochmal versuchen</button></div>`);
+      if (!cached) return screen(`<div class="center-card"><h2>Keine Verbindung</h2><p>${esc(e.message)}</p><button class="btn primary" data-act="reload">Nochmal versuchen</button></div>`);
     }
   }
   if (!App.plan.obj) {
-    if (c.role !== 'admin') return screen(`<div class="center-card"><h2>Noch kein Dienstplan</h2><p>Der Planer hat den Dienstplan noch nicht angelegt.</p><button class="btn" onclick="location.reload()">Nochmal versuchen</button></div>`);
+    if (c.role !== 'admin') return screen(`<div class="center-card"><h2>Noch kein Dienstplan</h2><p>Der Planer hat den Dienstplan noch nicht angelegt.</p><button class="btn" data-act="reload">Nochmal versuchen</button></div>`);
     App.plan.obj = emptyPlan();
     App.plan.dirty = true;
   }
@@ -149,6 +149,9 @@ act('welcome-admin', async () => {
   await start();
 });
 
+// Neu laden (statt onclick="…": Inline-Skripte sind per CSP gesperrt)
+act('reload', () => location.reload());
+
 act('forget-device', async () => {
   if (!(await confirmBox('Alle Daten und Zugänge auf diesem Gerät entfernen? Die Daten in der Dropbox bleiben erhalten.', 'Zurücksetzen', true))) return;
   await clearKeys();
@@ -192,10 +195,11 @@ async function adminLogin() {
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
-      App.adminKey = await C.unlockAdmin(App.plan.obj.admin.privateWrapped, f.pw.value);
+      // Im Speicher nur eine nicht exportierbare Kopie halten (Passwort ändern entsperrt selbst neu)
+      App.adminKey = await C.nonExtractableAdmin(await C.unlockAdmin(App.plan.obj.admin.privateWrapped, f.pw.value));
     } catch { toast('Passwort falsch', 'error'); f.pw.select(); return; }
     if (f.remember.checked) {
-      App.remembered = await setKey('admin', { key: await C.nonExtractableAdmin(App.adminKey), pub: App.plan.obj.admin.publicKey });
+      App.remembered = await setKey('admin', { key: App.adminKey, pub: App.plan.obj.admin.publicKey });
     }
     enterApp();
   });
@@ -205,8 +209,8 @@ act('admin-create', async () => {
   const pw = await promptPassword('Planer-Passwort', 'Mindestens 8 Zeichen empfohlen.', { confirm: true, okLabel: 'Festlegen' });
   if (!pw) return;
   const k = await C.createAdminKeys(pw);
-  App.adminKey = k.privateKey;
-  App.remembered = await setKey('admin', { key: await C.nonExtractableAdmin(k.privateKey), pub: k.publicKey });
+  App.adminKey = await C.nonExtractableAdmin(k.privateKey);
+  App.remembered = await setKey('admin', { key: App.adminKey, pub: k.publicKey });
   App.plan.update((p) => { p.admin = { publicKey: k.publicKey, privateWrapped: k.privateWrapped, updatedAt: now() }; });
   await App.plan.sync();
   enterApp();
@@ -240,7 +244,7 @@ async function employeeLogin() {
   const emps = employeesSorted(App.plan.obj);
   if (!App.cfg.empId || !App.plan.obj.employees[App.cfg.empId]) {
     screen(`<div class="center-card"><h2>Wer bist du?</h2>
-      <div class="stack">${emps.map((e) => `<button class="btn" data-act="emp-pick" data-id="${e.id}">${esc(e.name)}</button>`).join('') || '<p>Noch keine Mitarbeiter angelegt.</p>'}</div></div>`);
+      <div class="stack">${emps.map((e) => `<button class="btn" data-act="emp-pick" data-id="${esc(e.id)}">${esc(e.name)}</button>`).join('') || '<p>Noch keine Mitarbeiter angelegt.</p>'}</div></div>`);
     return;
   }
   const empId = App.cfg.empId;
@@ -256,7 +260,7 @@ async function employeeLogin() {
   } catch (e) {
     if (e.auth) return authBroken(e);
     file = cached ? cached.file : null;
-    if (!file) return screen(`<div class="center-card"><h2>Keine Verbindung</h2><p>${esc(e.message)}</p><button class="btn primary" onclick="location.reload()">Nochmal versuchen</button></div>`);
+    if (!file) return screen(`<div class="center-card"><h2>Keine Verbindung</h2><p>${esc(e.message)}</p><button class="btn primary" data-act="reload">Nochmal versuchen</button></div>`);
   }
   if (!file) {
     screen(`<div class="center-card"><h2>Hallo ${esc(emp.name)}!</h2>

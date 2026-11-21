@@ -1,5 +1,6 @@
 // Einstiegspunkt
 import { boot } from './app.js';
+import { esc } from './ui.js';
 import './views/plan.js';
 import './views/month.js';
 import './views/times.js';
@@ -44,5 +45,5 @@ window.addEventListener('resize', fitSoon);
 
 boot().catch((e) => {
   console.error(e);
-  document.getElementById('app').innerHTML = `<main class="screen"><div class="center-card"><h2>Fehler beim Start</h2><p>${String(e.message || e).replace(/</g, '&lt;')}</p><button class="btn primary" onclick="location.reload()">Neu laden</button></div></main>`;
+  document.getElementById('app').innerHTML = `<main class="screen"><div class="center-card"><h2>Fehler beim Start</h2><p>${esc(e.message || e)}</p><button class="btn primary" data-act="reload">Neu laden</button></div></main>`;
 });

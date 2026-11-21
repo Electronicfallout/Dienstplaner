@@ -123,17 +123,17 @@ export function proposalsHtml(plan) {
     const txt = `<div class="grow">${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}${p.gaps && p.gaps.length ? `<small class="warn-text">⚠ Danach fehlt: ${esc(p.gaps.join(' · '))}</small>` : ''}</div>`;
     if (p.fromPlaner) {
       const open = pendingFor(plan, p);
-      if (admin && p.status === 'offen') rows.push(`<li><div class="grow">Dein Vorschlag: ${esc(describe(plan, p))}<small>wartet auf ${esc(open.map((id) => name(plan, id)).join(', '))}</small></div><div class="btn-row"><button class="btn small ghost" data-act="prop-withdraw" data-id="${p.id}">Zurückziehen</button></div></li>`);
-      else if (!admin && p.status === 'offen' && open.includes(me)) rows.push(`<li><div class="grow">Vorschlag vom Planer: ${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}</div><div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${p.id}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${p.id}">Ablehnen</button></div></li>`);
+      if (admin && p.status === 'offen') rows.push(`<li><div class="grow">Dein Vorschlag: ${esc(describe(plan, p))}<small>wartet auf ${esc(open.map((id) => name(plan, id)).join(', '))}</small></div><div class="btn-row"><button class="btn small ghost" data-act="prop-withdraw" data-id="${esc(p.id)}">Zurückziehen</button></div></li>`);
+      else if (!admin && p.status === 'offen' && open.includes(me)) rows.push(`<li><div class="grow">Vorschlag vom Planer: ${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}</div><div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${esc(p.id)}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
       continue;
     }
     if (admin && (needsPlaner(plan, p) || (p.kind === 'swap' && p.status === 'offen'))) {
       const waits = !needsPlaner(plan, p) ? `<small class="muted">wartet noch auf ${esc(name(plan, p.with))}, du kannst aber gleich entscheiden</small>` : '';
-      rows.push(`<li>${txt.replace(/<\/div>$/, waits + '</div>')}<div class="btn-row"><button class="btn small primary" data-act="prop-confirm" data-id="${p.id}">Bestätigen</button><button class="btn small" data-act="prop-reject" data-id="${p.id}">Ablehnen</button></div></li>`);
+      rows.push(`<li>${txt.replace(/<\/div>$/, waits + '</div>')}<div class="btn-row"><button class="btn small primary" data-act="prop-confirm" data-id="${esc(p.id)}">Bestätigen</button><button class="btn small" data-act="prop-reject" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
     } else if (!admin && p.kind === 'swap' && p.with === me && p.status === 'offen') {
-      rows.push(`<li>${txt}<div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${p.id}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${p.id}">Ablehnen</button></div></li>`);
+      rows.push(`<li>${txt}<div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${esc(p.id)}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
     } else if (!admin && p.by === me && OPEN.includes(p.status)) {
-      rows.push(`<li>${txt}<div class="btn-row"><span class="small muted">${STATUS_TEXT[p.status]}${p.kind === 'swap' && p.status === 'offen' ? ` auf ${esc(name(plan, p.with))}` : p.status === 'offen' ? ' auf Planer' : ''}</span><button class="btn small ghost" data-act="prop-withdraw" data-id="${p.id}">Zurückziehen</button></div></li>`);
+      rows.push(`<li>${txt}<div class="btn-row"><span class="small muted">${STATUS_TEXT[p.status]}${p.kind === 'swap' && p.status === 'offen' ? ` auf ${esc(name(plan, p.with))}` : p.status === 'offen' ? ' auf Planer' : ''}</span><button class="btn small ghost" data-act="prop-withdraw" data-id="${esc(p.id)}">Zurückziehen</button></div></li>`);
     }
   }
   if (!rows.length) return '';
@@ -182,14 +182,14 @@ export async function propose(date, planerFor = null) {
   const r = await openModal({
     title: planer ? `${name(plan, me)} · ${day(date)}: ${mine}` : `${day(date)}: ${mine}`,
     body: `
-      ${!planer && date <= K.today() && !(plan.employees[me] || {}).noTimes ? `<p><button class="link" type="button" data-act="plan-time" data-d="${date}">⏱ Heutige Arbeitszeit eintragen</button></p>` : ''}
+      ${!planer && date <= K.today() && !(plan.employees[me] || {}).noTimes ? `<p><button class="link" type="button" data-act="plan-time" data-d="${esc(date)}">⏱ Heutige Arbeitszeit eintragen</button></p>` : ''}
       <div class="seg" ${planer ? 'hidden' : ''}>
         <label><input type="radio" name="kind" value="swap" checked><span>Mit jemandem tauschen</span></label>
         <label><input type="radio" name="kind" value="change"><span>Andere Zeit</span></label>
         <label><input type="radio" name="kind" value="free"><span>Frei wünschen</span></label>
       </div>
       <div data-k="swap">
-        <label class="field"><span>Mit</span><select name="with">${others.map((e) => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></label>
+        <label class="field"><span>Mit</span><select name="with">${others.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('')}</select></label>
         <div class="seg">
           <label><input type="radio" name="mode" value="same" checked><span>am selben Tag tauschen</span></label>
           <label><input type="radio" name="mode" value="other"><span>dafür einen anderen Tag übernehmen</span></label>
@@ -203,7 +203,7 @@ export async function propose(date, planerFor = null) {
         <p class="calc" id="preview"></p>
       </div>
       <div data-k="change" hidden>
-        <div class="preset-grid">${shifts.map((sh) => `<label class="preset"><input type="radio" name="preset" value="${sh.start}|${sh.end}"><span><b>${esc(sh.start)}–${esc(sh.end)}</b></span></label>`).join('')}</div>
+        <div class="preset-grid">${shifts.map((sh) => `<label class="preset"><input type="radio" name="preset" value="${esc(sh.start)}|${esc(sh.end)}"><span><b>${esc(sh.start)}–${esc(sh.end)}</b></span></label>`).join('')}</div>
         <div class="row2">
           <label class="field"><span>Beginn</span><input type="time" name="start"></label>
           <label class="field"><span>Ende</span><input type="time" name="end"></label>

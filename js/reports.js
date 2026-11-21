@@ -132,7 +132,7 @@ act('vac-pdf', async () => {
     title: `Urlaub ${y} als PDF`,
     body: `<div class="seg"><label><input type="radio" name="k" value="month" checked><span>Verbrauch pro Monat (alle)</span></label><label><input type="radio" name="k" value="year"><span>Jahresübersicht pro Person</span></label></div>
       <label class="field" data-k="month"><span>Monat</span><select name="m">${K.MONATE.map((n, i) => `<option value="${i + 1}" ${i + 1 === defM ? 'selected' : ''}>${n} ${y}</option>`).join('')}<option value="all">Alle Monate ${y} (eine Seite pro Monat)</option></select></label>
-      <label class="field" data-k="year" hidden><span>Mitarbeiter</span><select name="e"><option value="all">Alle (eine Seite pro Person)</option>${emps.map((e) => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></label>`,
+      <label class="field" data-k="year" hidden><span>Mitarbeiter</span><select name="e"><option value="all">Alle (eine Seite pro Person)</option>${emps.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('')}</select></label>`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'PDF erstellen', kind: 'primary', value: 'ok' }],
     onOpen(root) { root.addEventListener('change', () => { const k = formData(root).k; root.querySelectorAll('[data-k]').forEach((el) => { el.hidden = el.dataset.k !== k; }); }); },
     onAction(v, root) { return v ? formData(root) : null; },
@@ -215,7 +215,7 @@ act('times-pdf', async () => {
   if (admin) {
     const r = await openModal({
       title: `Zeiterfassung ${K.MONATE[m - 1]} ${y} als PDF`,
-      body: `<label class="field"><span>Mitarbeiter</span><select name="e">${emps.map((e) => `<option value="${e.id}" ${e.id === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}<option value="all">Alle (eine Seite pro Person)</option></select></label>`,
+      body: `<label class="field"><span>Mitarbeiter</span><select name="e">${emps.map((e) => `<option value="${esc(e.id)}" ${e.id === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}<option value="all">Alle (eine Seite pro Person)</option></select></label>`,
       buttons: [{ label: 'Abbrechen', value: null }, { label: 'PDF erstellen', kind: 'primary', value: 'ok' }],
       onAction(v, root) { return v ? formData(root).e : null; },
     });
