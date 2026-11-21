@@ -7,6 +7,7 @@ import { tracked, employeesSorted, vacationAccount, requestDays, employed, entry
 import { now } from '../store.js';
 import { randomId } from '../crypto.js';
 import { maybeJump, jumpToggleHtml } from '../jump.js';
+import { LS } from '../storage.js';
 
 App.vyear = K.parseIso(K.today()).y;
 
@@ -132,10 +133,11 @@ function render(main) {
 
   const myDays = !admin ? `<h3>Eingetragene Urlaubstage ${y}</h3><p>${ranges(acc[0].v.tage).join(', ') || '<span class="muted">Keine</span>'}</p>` : '';
 
+  // Planer: Urlaubskonten unter der Übersicht, eingeklappt (Zustand wird gemerkt)
+  const accFold = admin ? `<details class="saldo-detail acc-fold" ${LS.get('dp.vacAcc') === 'open' ? 'open' : ''}><summary><b>Urlaubskonten aller Mitarbeiter</b> <span class="muted small">(${acc.length} Personen)</span></summary>${accTable.replace('<h3>Urlaubskonto heute (in Tagen)</h3>', '<p class="small muted">Stand heute, in Tagen</p>')}</details>` : '';
   main.innerHTML = toolbar
     + (admin && open.length ? reqList(open, `Offene Anträge (${open.length})`) : '')
-    + accTable
-    + (admin ? overview : myDays)
+    + (admin ? overview + accFold : accTable + myDays)
     + (admin ? reqList(reqs.filter((r) => r.status !== 'offen' && r.to >= `${y}-01-01` && r.from <= `${y}-12-31`), 'Erledigte Anträge') : reqList(reqs, 'Meine Anträge'))
     + allList;
   maybeJump(main);
@@ -279,3 +281,7 @@ act('v-reject', async ({ e, r }) => {
 });
 
 registerView('vacation', { title: 'Urlaub', icon: '🌴', roles: ['admin', 'employee'], render });
+
+document.addEventListener('toggle', (e) => {
+  if (e.target.classList && e.target.classList.contains('acc-fold')) LS.set('dp.vacAcc', e.target.open ? 'open' : 'closed');
+}, true);
