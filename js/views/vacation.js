@@ -6,6 +6,7 @@ import * as K from '../calc.js';
 import { tracked, employeesSorted, vacationAccount, requestDays, employed, entryKey, planEntry, alive, dayTarget, setEntry, sollDay, isWorkDay } from '../model.js';
 import { now } from '../store.js';
 import { randomId } from '../crypto.js';
+import { maybeJump, jumpToggleHtml } from '../jump.js';
 
 App.vyear = K.parseIso(K.today()).y;
 
@@ -55,6 +56,7 @@ function render(main) {
         <button class="icon-btn" data-act="vyear" data-d="1" aria-label="Nächstes Jahr">›</button>
       </div>
       <div class="nav-group">
+        ${jumpToggleHtml()}
         ${admin ? '<button class="btn small ghost" data-act="vac-pdf">PDF</button>' : ''}
         ${admin ? '<button class="btn small primary" data-act="v-enter">Urlaub eintragen</button>' : '<button class="btn small primary" data-act="v-request">Urlaub beantragen</button>'}
       </div>
@@ -94,8 +96,8 @@ function render(main) {
   const overview = `
     <h3>Wer ist wann weg?</h3>
     <div class="table-scroll"><table class="yearview">
-      <thead><tr><th class="sticky"></th>${weeks.map((w) => { const p = K.parseIso(K.addDays(w, 3)); const first = p.d <= 7; return `<th title="KW ${K.isoWeek(w)}">${first && p.y === y ? K.MONATE[p.m - 1].slice(0, 3) : ''}</th>`; }).join('')}</tr></thead>
-      <tbody>${employeesSorted(plan).map((e) => `<tr style="--c:${esc(e.color || '#2e9d5b')}"><th class="sticky"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>${weeks.map((w) => {
+      <thead><tr><th class="sticky"></th>${weeks.map((w) => { const p = K.parseIso(K.addDays(w, 3)); const first = p.d <= 7; return `<th title="KW ${K.isoWeek(w)}" class="${w === K.mondayOf(K.today()) ? 'today' : ''}">${first && p.y === y ? K.MONATE[p.m - 1].slice(0, 3) : ''}</th>`; }).join('')}</tr></thead>
+      <tbody>${employeesSorted(plan).map((e) => `<tr class="${e.id === App.cfg.empId ? 'me' : ''}" style="--c:${esc(e.color || '#2e9d5b')}"><th class="sticky"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</th>${weeks.map((w) => {
         let u = 0, k = 0;
         const list = [];
         for (let i = 0; i < 6; i++) {
@@ -136,6 +138,7 @@ function render(main) {
     + (admin ? overview : myDays)
     + (admin ? reqList(reqs.filter((r) => r.status !== 'offen' && r.to >= `${y}-01-01` && r.from <= `${y}-12-31`), 'Erledigte Anträge') : reqList(reqs, 'Meine Anträge'))
     + allList;
+  maybeJump(main);
 }
 
 act('vyear', ({ d }) => { App.vyear += +d; render(document.getElementById('main')); });

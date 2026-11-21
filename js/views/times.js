@@ -6,6 +6,7 @@ import * as K from '../calc.js';
 import { countedUntil, tracked, employeesSorted, planEntry, resolve, resolveTime, employed, monthStats, saldoDetail, alive, isPublished } from '../model.js';
 import { now } from '../store.js';
 import { diffBadge } from './plan.js';
+import { maybeJump, jumpToggleHtml } from '../jump.js';
 
 const td = K.parseIso(K.today());
 App.tmonth = { y: td.y, m: td.m };
@@ -52,6 +53,7 @@ function render(main) {
         <div class="period"><b>${K.MONATE[m - 1]} ${y}</b></div>
         <button class="icon-btn" data-act="tmonth" data-d="1" aria-label="Nächster Monat">›</button>
         <button class="btn small ghost" data-act="times-pdf">PDF</button>
+        ${jumpToggleHtml()}
       </div>
     </div>
     ${accessNote}
@@ -81,7 +83,7 @@ function render(main) {
         const note = x.tr && times[x.date] && times[x.date].note ? `<small class="note">${esc(times[x.date].note)}</small>` : '';
         const h = x.ist + x.credit;
         const diff = x.tr && x.tr.type === 'shift' && !x.tr.openEnd && x.pr && x.pr.type === 'shift' && !x.pr.openEnd ? x.tr.workH - x.pr.workH : 0; // nur echte Arbeitszeit gegen geplanten Dienst
-        const dayRow = !x.pr && !x.tr && wd === 6 ? '' : `<tr class="${x.date === t ? 'today' : ''} ${canEdit ? 'clickable' : ''} ${wd === 5 ? 'sat' : ''}" ${canEdit ? `data-act="t-edit" data-d="${x.date}"` : ''}>
+        const dayRow = !x.pr && !x.tr && wd === 6 ? '' : `<tr data-day="${x.date}" class="${x.date === t ? 'today' : ''} ${canEdit ? 'clickable' : ''} ${wd === 5 ? 'sat' : ''}" ${canEdit ? `data-act="t-edit" data-d="${x.date}"` : ''}>
           <td><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(x.date)}</td><td>${pl}</td><td>${rec}${note}</td>
           <td class="num">${x.za ? `<span class="neg">−${K.fmtH(x.za)}</span><small>Zeitausgleich</small>` : h ? K.fmtH(h) : ''}${diff ? `<small>${diffBadge(diff)}</small>` : ''}${x.bonus ? `<small title="Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}">+${K.fmtH(x.bonus)} Z</small>` : ''}</td></tr>`;
         // Wochensumme nach dem Sonntag (bzw. am Monatsende): ganze Woche, gerechnet bis gestern
@@ -106,6 +108,7 @@ function render(main) {
 
   const sel = main.querySelector('[data-change="t-emp"]');
   if (sel) sel.addEventListener('change', () => { App.tEmp = sel.value; render(main); });
+  maybeJump(main);
 }
 
 act('tmonth', ({ d }) => {

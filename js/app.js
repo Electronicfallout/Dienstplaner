@@ -409,6 +409,7 @@ function enterApp() {
       </div>
     </header>
     <main id="main" tabindex="-1"></main>`;
+  App.jumpPending = true;
   rerender();
   updateSyncBadge();
   updateBell();
@@ -436,8 +437,9 @@ export function rerender() {
 act('nav', ({ view }) => {
   App.view = view;
   LS.set('dp.view', view);
-  rerender();
+  App.jumpPending = true; // Wochen-/Monatsansicht springen zu heute
   window.scrollTo(0, 0);
+  rerender();
 });
 
 function allDocs() {

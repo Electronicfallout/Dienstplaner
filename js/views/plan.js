@@ -8,6 +8,7 @@ import { now } from '../store.js';
 import { proposalsHtml } from '../proposals.js';
 import '../saturday.js';
 import { LS } from '../storage.js';
+import { maybeJump, requestJump, jumpToggleHtml } from '../jump.js';
 
 App.week = K.mondayOf(K.today());
 
@@ -70,6 +71,7 @@ function render(main) {
         ${admin ? '<button class="btn small ghost" data-act="sat-rotate">Samstage</button>' : ''}
         ${admin ? '<button class="btn small primary" data-act="publish">Veröffentlichen</button>' : ''}
         <button class="btn small ghost" data-act="print">Drucken</button>
+        ${jumpToggleHtml()}
         <button class="btn small ghost" data-act="pdf" data-kind="week">PDF</button>
       </div>
     </div>
@@ -133,7 +135,7 @@ function render(main) {
       <thead><tr><th class="sticky">Tag</th>${emps.map((e) => `<th class="${e.id === meId ? 'me' : ''}"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}<small>${K.fmtH(e.weeklyHours)} h</small></th>`).join('')}<th class="evcol">Events im Shop</th><th class="evcol">Anmerkung</th></tr></thead>
       <tbody>${days.map((d) => {
         const ev = dayInfo(d);
-        return `<tr class="${K.weekday(d) === 5 ? 'sat' : ''} ${isPublished(plan, d) ? '' : 'draft'}">
+        return `<tr data-day="${d}" class="${K.weekday(d) === 5 ? 'sat' : ''} ${isPublished(plan, d) ? '' : 'draft'} ${d === t ? 'today' : ''}">
         <th class="sticky ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${dayHead(d, false)}</th>
         ${emps.map((e) => (!employed(e, d) ? '<td class="off"></td>' : `<td class="${e.id === meId ? 'me' : ''} ${canEdit(d, e) ? 'clickable' : ''}" ${editAttr(d, e)}>${cell(d, e)}</td>`)).join('')}
         <td class="evcol ${admin ? 'clickable' : ''}" ${dayAttr(d)}>${evHtml(d) || (admin ? '<span class="add-hint">+ Event</span>' : '')}</td>
@@ -144,7 +146,7 @@ function render(main) {
     </table></div>`;
   } else {
     body = `<div class="day-list">${days.map((d) => `
-      <section class="day-card ${d === t ? 'today' : ''}">
+      <section data-day="${d}" class="day-card ${d === t ? 'today' : ''}">
         <div class="${admin ? 'clickable' : ''}" ${dayAttr(d)}>${dayHead(d, true)}</div>
         <ul>${emps.filter((e) => employed(e, d)).map((e) => `<li class="${e.id === meId ? 'me' : ''} ${canEdit(d, e) ? 'clickable' : ''}" ${editAttr(d, e)}>
             <span class="who"><span class="dot" style="background:${e.color}"></span>${esc(e.name)}</span>
@@ -156,6 +158,7 @@ function render(main) {
   }
 
   main.innerHTML = toolbar + body + (admin ? '<p class="hint">Tippe auf ein Feld, um eine Schicht einzutragen. Zum Tauschen einen Eintrag auf einen anderen ziehen (am Handy lange drücken). Events und Anmerkungen trägst du in den rechten Spalten bzw. beim Tag ein. Blasse Einträge kommen aus dem fixen Wochenplan.</p>' : '<p class="hint">Tippe auf deinen Dienst: ab heute zum Tauschen oder für eine andere Zeit, an vergangenen Tagen zum Eintragen deiner Arbeitszeit.</p>');
+  maybeJump(main);
 }
 
 // Eigene Zelle (Mitarbeiter): ab heute tauschen/vorschlagen, vergangene Tage Arbeitszeit eintragen
@@ -173,6 +176,7 @@ export function diffBadge(d) {
 
 act('week', ({ d }) => {
   App.week = +d === 0 ? K.mondayOf(K.today()) : K.addDays(App.week, +d);
+  if (+d === 0) requestJump();
   render(document.getElementById('main'));
 });
 

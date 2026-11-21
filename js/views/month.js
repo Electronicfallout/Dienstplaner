@@ -6,6 +6,7 @@ import * as K from '../calc.js';
 import { employeesSorted, planEntry, resolve, employed, monthStats, alive, isPublished, eventsOn, coverageGaps } from '../model.js';
 import { cellHtml, editEntry, diffBadge, myCellAct } from './plan.js';
 import { LS } from '../storage.js';
+import { maybeJump, requestJump, jumpToggleHtml } from '../jump.js';
 import { proposalsHtml } from '../proposals.js';
 
 // Zoom der Monatstabelle (mit zwei Fingern oder + / −), pro Gerät gemerkt
@@ -55,6 +56,7 @@ function render(main) {
       </div>
       <div class="nav-group">
         <button class="btn small ghost" data-act="print">Drucken</button>
+        ${jumpToggleHtml()}
         <span class="zoom-group"><button class="icon-btn small" data-act="mzoom" data-f="0.85" aria-label="Verkleinern">−</button><button class="btn small ghost" data-act="mzoom" data-f="0" id="mzoom" title="Zoom zurücksetzen">${Math.round(zoom * 100)} %</button><button class="icon-btn small" data-act="mzoom" data-f="1.18" aria-label="Vergrößern">+</button></span>
         <button class="btn small ghost" data-act="pdf" data-kind="month">PDF</button>
         ${admin ? '<button class="btn small ghost" data-act="export-xlsx">Excel</button>' : ''}
@@ -67,7 +69,7 @@ function render(main) {
         const wd = K.weekday(d);
         const hol = K.holidayName(d, plan.settings);
         const day = alive(plan.days[d]) ? plan.days[d] : {};
-        return `<tr class="${isPublished(plan, d) ? '' : 'draft'} ${wd === 6 ? 'sun' : ''} ${wd === 5 ? 'sat' : ''} ${hol ? 'holiday' : ''} ${d === t ? 'today' : ''}">
+        return `<tr data-day="${d}" class="${isPublished(plan, d) ? '' : 'draft'} ${wd === 6 ? 'sun' : ''} ${wd === 5 ? 'sat' : ''} ${hol ? 'holiday' : ''} ${d === t ? 'today' : ''}">
           <th class="sticky ${admin ? 'clickable' : ''}" ${admin ? `data-act="edit-day" data-d="${d}"` : ''}><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(d)}${isPublished(plan, d) ? '' : ' <span class="draft-tag">Entwurf</span>'}${admin && coverageGaps(plan, d).length ? ` <span class="gap" title="fehlt: ${coverageGaps(plan, d).join(', ')}">⚠ ${coverageGaps(plan, d).map((x) => (x.includes(':') ? '⏰' : x[0])).join('')}</span>` : ''}</th>
           ${emps.map((e) => {
             if (!employed(e, d)) return '<td class="off"></td>';
@@ -88,10 +90,11 @@ function render(main) {
     </table></div>
     <p class="hint">Geplant = Arbeitszeit laut Plan plus angerechnete Stunden für Feiertage, Zeitausgleich, Krankenstand und Ersatzfrei (Urlaub hat weder Soll noch Stunden) (Zeitausgleich wird dabei vom Zeitkonto abgezogen). Die tatsächlich erfassten Zeiten stehen unter „Zeiten“. Zoomen: mit zwei Fingern in der Tabelle oder mit + / −.</p>`;
   pinch(main.querySelector('.table-scroll.pinch'));
+  maybeJump(main);
 }
 
 act('month', ({ d }) => {
-  if (+d === 0) { const x = K.parseIso(K.today()); App.month = { y: x.y, m: x.m }; }
+  if (+d === 0) { const x = K.parseIso(K.today()); App.month = { y: x.y, m: x.m }; requestJump(); }
   else {
     let { y, m } = App.month; m += +d;
     if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; }

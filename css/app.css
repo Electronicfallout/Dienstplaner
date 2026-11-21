@@ -380,3 +380,10 @@ table.plan td.evcol, table.plan th.evcol { min-width: 150px; font-size: .85rem; 
 .event.rec { color: var(--muted); }
 .dayhead .event, td.evcol .event { display: block; }
 body.printmode table.plan td:not(.ev):not(.evcol), body.printmode table.plan th { white-space: nowrap; }
+
+/* Zu heute springen */
+.jump-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); white-space: nowrap; cursor: pointer; }
+.jump-toggle input { margin: 0; }
+@media print { .jump-toggle { display: none; } }
+table.yearview thead th.today { background: var(--accent); }
+table.yearview tr.me th { font-weight: 700; }
