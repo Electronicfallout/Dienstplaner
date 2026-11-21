@@ -22,7 +22,7 @@ function cellFor(plan, d, e) {
   const r = resolve(plan, planEntry(plan, d, e.id), e, d);
   if (!r) return { text: '' };
   const note = r.note && r.type !== 'note' ? `\n${clean(r.note)}` : '';
-  if (r.type === 'shift') return { text: `${r.start}–${r.end}${note}`, fill: hexRgb(r.color) };
+  if (r.type === 'shift') return { text: `${r.text}${note}`, fill: hexRgb(r.color) };
   if (r.type === 'status') return { text: r.text + note, fill: STATUS_FILL[r.status] };
   return { text: clean(r.text), italic: true };
 }

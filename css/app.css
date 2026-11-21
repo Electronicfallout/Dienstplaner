@@ -306,18 +306,19 @@ table.yearview td { width: 12px; min-width: 12px; border-left: 1px solid var(--s
 .qr svg { width: 100%; height: auto; }
 
 /* ---------- Dialog ---------- */
-.modal-wrap { position: fixed; inset: 0; background: rgba(10, 18, 26, .45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.modal { background: var(--surface); border-radius: 14px; width: 100%; max-width: 480px; max-height: calc(100dvh - 32px); display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
+.modal-wrap { position: fixed; inset: 0; top: var(--vv-top, 0px); bottom: auto; height: var(--vv-h, 100dvh); background: rgba(10, 18, 26, .45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal { background: var(--surface); border-radius: 14px; width: 100%; max-width: 480px; max-height: 100%; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0, 0, 0, .25); }
 .modal.wide { max-width: 680px; }
 .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px 6px; gap: 10px; }
 .modal-head h2 { margin: 0; font-size: 1.05rem; }
 .modal-head .icon-btn { border: 0; font-size: 1.1rem; }
-.modal-body { padding: 6px 16px 10px; overflow-y: auto; }
+.modal-body { padding: 6px 16px 10px; overflow-y: auto; min-height: 0; flex: 1 1 auto; overscroll-behavior: contain; }
+.modal-head, .modal-foot { flex: 0 0 auto; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px 14px; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .modal-foot .btn.ghost { margin-right: auto; }
 @media (max-width: 559px) {
   .modal-wrap { align-items: flex-end; padding: 0; }
-  .modal, .modal.wide { max-width: none; border-radius: 16px 16px 0 0; max-height: 92dvh; padding-bottom: env(safe-area-inset-bottom); }
+  .modal, .modal.wide { max-width: none; border-radius: 16px 16px 0 0; max-height: calc(100% - 12px); padding-bottom: env(safe-area-inset-bottom); }
   .modal-foot .btn { flex: 1; }
   .modal-foot .btn.ghost { flex: 0 0 auto; }
 }

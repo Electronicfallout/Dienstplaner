@@ -38,6 +38,23 @@ export function toast(msg, kind = 'info', action) {
 }
 
 // ---------- Dialog ----------
+// Dialoge an den sichtbaren Bereich anpassen: geht am Handy die Tastatur oder die Zeitauswahl auf,
+// bleibt der Knopf zum Speichern trotzdem sichtbar (iPhone und ältere Android-Browser).
+if (window.visualViewport) {
+  const vv = window.visualViewport;
+  const fit = () => {
+    document.documentElement.style.setProperty('--vv-h', vv.height + 'px');
+    document.documentElement.style.setProperty('--vv-top', vv.offsetTop + 'px');
+  };
+  vv.addEventListener('resize', fit);
+  vv.addEventListener('scroll', fit);
+  fit();
+}
+document.addEventListener('focusin', (e) => {
+  const el = e.target;
+  if (!el.closest || !el.closest('.modal-body')) return;
+  setTimeout(() => el.scrollIntoView({ block: 'nearest' }), 300);
+});
 // openModal({title, body (HTML), buttons:[{label, kind, value}], onOpen(root), onAction(value, root) -> false hält offen})
 export function openModal({ title, body, buttons = [], onOpen, onAction, wide }) {
   return new Promise((resolve) => {

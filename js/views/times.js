@@ -64,18 +64,23 @@ function render(main) {
     ${!admin && todayPlan && todayPlan.type === 'shift' && !todayRec && y === td.y && m === td.m ? `
       <div class="quick">
         <span>Heute geplant: <b>${esc(todayPlan.text)}</b></span>
-        <button class="btn primary" data-act="t-asplanned" data-d="${t}">Wie geplant erfassen</button>
+        <button class="btn primary" data-act="t-asplanned" data-d="${t}">${todayPlan.openEnd ? 'Beginn erfassen' : 'Wie geplant erfassen'}</button>
         <button class="btn" data-act="t-edit" data-d="${t}">Andere Zeit</button>
+      </div>` : ''}
+    ${!admin && todayRec && !todayRec.status && K.parseTime(todayRec.end) === null && y === td.y && m === td.m ? `
+      <div class="quick">
+        <span>Heute seit <b>${esc(todayRec.start)}</b>, Ende noch offen</span>
+        <button class="btn primary" data-act="t-edit" data-d="${t}">Ende eintragen</button>
       </div>` : ''}
     <div class="table-scroll"><table class="times">
       <thead><tr><th>Tag</th><th>Geplant</th><th>Erfasst</th><th class="num">h</th></tr></thead>
       <tbody>${st.tage.map((x) => {
         const wd = K.weekday(x.date);
         const pl = !admin && !isPublished(plan, x.date) ? '<span class="muted">Entwurf</span>' : x.pr ? (x.pr.type === 'shift' ? `${esc(x.pr.text)} <small>${K.fmtH(x.pr.workH)} h</small>` : esc(x.pr.text)) : '';
-        const rec = x.tr ? (x.tr.type === 'shift' ? `${esc(x.tr.text)} <small>${x.tr.pause} min Pause</small>` : esc(x.tr.text)) : (x.date <= t && x.pr && x.pr.type === 'shift' ? '<span class="muted">nicht erfasst</span>' : x.date <= t && x.pr && x.pr.status === 'ZA' ? '<span class="muted">bitte bestätigen</span>' : '');
+        const rec = x.tr ? (x.tr.type === 'shift' ? `${esc(x.tr.text)} <small>${x.tr.openEnd ? 'Ende fehlt' : `${x.tr.pause} min Pause`}</small>` : esc(x.tr.text)) : (x.date <= t && x.pr && x.pr.type === 'shift' ? '<span class="muted">nicht erfasst</span>' : x.date <= t && x.pr && x.pr.status === 'ZA' ? '<span class="muted">bitte bestätigen</span>' : '');
         const note = x.tr && times[x.date] && times[x.date].note ? `<small class="note">${esc(times[x.date].note)}</small>` : '';
         const h = x.ist + x.credit;
-        const diff = x.tr && x.tr.type === 'shift' && x.pr && x.pr.type === 'shift' ? x.tr.workH - x.pr.workH : 0; // nur echte Arbeitszeit gegen geplanten Dienst
+        const diff = x.tr && x.tr.type === 'shift' && !x.tr.openEnd && x.pr && x.pr.type === 'shift' && !x.pr.openEnd ? x.tr.workH - x.pr.workH : 0; // nur echte Arbeitszeit gegen geplanten Dienst
         const dayRow = !x.pr && !x.tr && wd === 6 ? '' : `<tr class="${x.date === t ? 'today' : ''} ${canEdit ? 'clickable' : ''} ${wd === 5 ? 'sat' : ''}" ${canEdit ? `data-act="t-edit" data-d="${x.date}"` : ''}>
           <td><b>${K.WOCHENTAGE[wd]}</b> ${K.fmtDate(x.date)}</td><td>${pl}</td><td>${rec}${note}</td>
           <td class="num">${x.za ? `<span class="neg">−${K.fmtH(x.za)}</span><small>Zeitausgleich</small>` : h ? K.fmtH(h) : ''}${diff ? `<small>${diffBadge(diff)}</small>` : ''}${x.bonus ? `<small title="Zuschlag ab ${esc(plan.settings.nightFrom || '21:00')}">+${K.fmtH(x.bonus)} Z</small>` : ''}</td></tr>`;
@@ -117,8 +122,8 @@ act('t-asplanned', ({ d }) => {
   const r = resolve(App.plan.obj, planEntry(App.plan.obj, d, emp.id), emp, d);
   if (!r || r.type !== 'shift') return;
   const doc = empDoc(emp.id);
-  doc.update((o) => { o.times[d] = { start: r.start, end: r.end, updatedAt: now() }; });
-  toast('Erfasst: ' + r.text);
+  doc.update((o) => { o.times[d] = { start: r.start, end: r.end || '', updatedAt: now() }; });
+  toast(r.openEnd ? `Beginn ${r.start} erfasst. Das Ende trägst du ein, sobald du fertig bist.` : 'Erfasst: ' + r.text);
 });
 
 // Aus dem Dienstplan: Arbeitszeit für einen Tag eintragen (Planer: für die gewählte Person)
@@ -154,7 +159,7 @@ async function editTime(d) {
       ${cur && cur.status ? `<p class="small">Erfasst: <b>${esc(K.statusLabel(cur.status))}</b></p>` : ''}
       <div class="row3" ${plannedZA ? 'hidden' : ''}>
         <label class="field"><span>Beginn</span><input type="time" name="start" value="${esc(v0.start || '')}"></label>
-        <label class="field"><span>Ende</span><input type="time" name="end" value="${esc(v0.end || '')}"></label>
+        <label class="field"><span>Ende (leer = noch offen)</span><input type="time" name="end" value="${esc(v0.end || '')}"></label>
         <label class="field"><span>Pause in Minuten</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="leer = automatisch" value="${v0.pause ?? ''}"></label>
       </div>
       <p class="small muted" ${plannedZA ? 'hidden' : ''}>Hast du eine andere Pause gemacht, trag die Minuten bei „Pause“ ein (auch 0). Leer lassen = automatisch ${esc(s.pauseMin)} min ab ${esc(s.pauseAfterH)} h.</p>
@@ -171,7 +176,7 @@ async function editTime(d) {
       const upd = () => {
         const f = formData(root);
         const dur = K.durationMin(f.start, f.end);
-        if (dur === null) { root.querySelector('#calc').textContent = ''; return; }
+        if (dur === null) { root.querySelector('#calc').textContent = K.parseTime(f.start) !== null ? 'Ende noch offen: du kannst nur den Beginn speichern und das Ende später nachtragen.' : ''; return; }
         const p = f.pause === '' ? K.autoPauseMin(f.start, f.end, s) : Number(f.pause);
         root.querySelector('#calc').textContent = `${K.fmtH(dur / 60)} h − ${p} min Pause = ${K.fmtH(Math.max(0, dur - p) / 60)} h`;
       };
@@ -185,8 +190,9 @@ async function editTime(d) {
       if (v === 'efs') { doc.update((o) => { o.times[d] = { status: 'Ersatzfrei Sa', updatedAt: t, ...(isAdmin() ? { byAdmin: true } : {}) }; }); toast('Ersatzfrei Samstag eingetragen: das Soll zählt am Samstag dieser Woche'); return 'ok'; }
       if (v === 'za') { doc.update((o) => { o.times[d] = { status: 'ZA', updatedAt: t, ...(isAdmin() ? { byAdmin: true } : {}) }; }); toast('Zeitausgleich bestätigt'); return 'ok'; }
       const f = formData(root);
-      if (K.parseTime(f.start) === null || K.parseTime(f.end) === null) { toast('Beginn und Ende eingeben', 'error'); return false; }
-      const rec = { start: f.start, end: f.end, updatedAt: t };
+      if (K.parseTime(f.start) === null) { toast('Beginn eingeben', 'error'); return false; }
+      const rec = { start: f.start, end: K.parseTime(f.end) === null ? '' : f.end, updatedAt: t };
+      if (!rec.end) toast('Beginn gespeichert. Das Ende bitte nachtragen, sobald du fertig bist.');
       if (f.pause !== '') rec.pause = Number(f.pause);
       if (f.note.trim()) rec.note = f.note.trim();
       if (isAdmin()) rec.byAdmin = true;

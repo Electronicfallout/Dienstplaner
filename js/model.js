@@ -148,9 +148,17 @@ function resolveRaw(plan, entry, emp, date) {
       const sh = plan.shifts[entry.shiftId];
       start = start || sh.start; end = end || sh.end; label = sh.label;
     }
-    const pause = (entry.pause === undefined || entry.pause === null || entry.pause === '') ? autoPauseMin(start, end, s) : Number(entry.pause);
-    const h = workHours(start, end, s, entry.pause);
-    return { type: 'shift', start, end, pause, workH: h || 0, creditH: 0, label, text: `${start}–${end}`, note: entry.note, color: shiftColor(plan, entry.shiftId, start, end, date), ...nightBonus(start, end, s) };
+    // Offenes Ende (z. B. Event): geplant wird bis Geschäftsschluss geschätzt, gezählt wird später die erfasste Zeit
+    const openEnd = !!start && parseTime(end) === null;
+    let endCalc = end;
+    if (openEnd) {
+      const oh = openHours(plan, date);
+      endCalc = oh && parseTime(oh[1]) > parseTime(start) ? oh[1] : '';
+      end = '';
+    }
+    const pause = (entry.pause === undefined || entry.pause === null || entry.pause === '') ? autoPauseMin(start, endCalc, s) : Number(entry.pause);
+    const h = workHours(start, endCalc, s, entry.pause);
+    return { type: 'shift', start, end, openEnd, endCalc, pause, workH: h || 0, creditH: 0, label, text: spanText(start, end), note: entry.note, color: shiftColor(plan, entry.shiftId, start, end, date), ...nightBonus(start, endCalc, s) };
   }
   if (entry.kind === 'status') {
     const def = STATUS[entry.status] || { credit: 'null' };
@@ -178,10 +186,14 @@ export function nightBonus(start, end, settings) {
   return { nightH, bonusH: nightH * Math.max(0, f - 1) };
 }
 
+// „18:00–19:00“ oder bei offenem Ende „18:00–offen“
+export function spanText(start, end) { return `${start}–${end || 'offen'}`; }
+
 // Vom Mitarbeiter erfasste Zeit auflösen
 export function resolveTime(t, settings) {
   if (!alive(t)) return null;
   if (t.status) return { type: 'status', status: t.status, workH: 0, text: statusLabel(t.status) };
+  if (parseTime(t.end) === null) return { type: 'shift', start: t.start, end: '', openEnd: true, pause: 0, workH: 0, text: spanText(t.start, ''), nightH: 0, bonusH: 0 };
   const h = workHours(t.start, t.end, settings, t.pause);
   const pause = (t.pause === undefined || t.pause === null || t.pause === '') ? autoPauseMin(t.start, t.end, settings) : Number(t.pause);
   return { type: 'shift', start: t.start, end: t.end, pause, workH: h || 0, text: `${t.start}–${t.end}`, ...nightBonus(t.start, t.end, settings) };
@@ -229,7 +241,7 @@ export function monthStats(plan, emp, y, m, times, untilDate) {
 export function countedUntil(plan, emp, times) {
   const t = today();
   const y = addDays(t, -1);
-  if (times && alive(times[t])) return t;
+  if (times && alive(times[t]) && (times[t].status || parseTime(times[t].end) !== null)) return t;
   const r = resolve(plan, planEntry(plan, t, emp.id), emp, t);
   if (r && r.type === 'shift' && r.end) {
     const d = new Date();
@@ -347,7 +359,7 @@ export function entryText(plan, date, empId) {
   const emp = plan.employees[empId];
   const r = resolve(plan, planEntry(plan, date, empId), emp ? { id: empId, ...emp } : null, date);
   if (!r) return 'kein Dienst';
-  if (r.type === 'shift') return `${r.start}–${r.end}`;
+  if (r.type === 'shift') return spanText(r.start, r.end);
   if (r.type === 'status') return r.status;
   return r.text || 'Notiz';
 }
@@ -451,8 +463,8 @@ export function coverageGaps(plan, date) {
     if (!employed(e, date)) continue;
     const r = resolve(plan, planEntry(plan, date, e.id), e, date);
     if (r && r.type === 'shift') {
-      have.add(shiftSlot(r.start, r.end, plan.settings));
-      const a = parseTime(r.start), b = parseTime(r.end);
+      have.add(shiftSlot(r.start, r.endCalc || r.end, plan.settings));
+      const a = parseTime(r.start), b = parseTime(r.endCalc || r.end);
       if (a !== null && b !== null) iv.push([a, b > a ? b : b + 1440]);
     }
   }

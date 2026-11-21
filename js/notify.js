@@ -26,7 +26,7 @@ export function missingTimes(empId) {
     const d = K.addDays(mon, i);
     if (d < from || !employed(emp, d) || !isPublished(plan, d)) continue;
     const r = resolve(plan, planEntry(plan, d, empId), emp, d);
-    if (r && (r.type === 'shift' || r.status === 'ZA') && !alive(times[d])) out.push(d);
+    if (r && (r.type === 'shift' || r.status === 'ZA') && (!alive(times[d]) || (!times[d].status && K.parseTime(times[d].end) === null))) out.push(d);
   }
   return { week: K.isoWeek(mon), days: out };
 }

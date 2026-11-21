@@ -15,7 +15,7 @@ export function cellHtml(r, pe, { compact = false } = {}) {
   if (!r) return '<span class="empty">·</span>';
   const tpl = pe && pe.source !== 'plan' ? ' from-tpl' : '';
   if (r.type === 'shift') {
-    return `<span class="cell-shift${tpl}${r.color ? ' colored' : ''}"${r.color ? ` style="background:${esc(r.color)}"` : ''}><b>${esc(r.start)}–${esc(r.end)}</b>${compact ? '' : `<small>${K.fmtH(r.workH)} h${r.label ? ' · ' + esc(r.label) : ''}</small>`}${r.note ? `<small class="note">${esc(r.note)}</small>` : ''}</span>`;
+    return `<span class="cell-shift${tpl}${r.color ? ' colored' : ''}"${r.color ? ` style="background:${esc(r.color)}"` : ''}><b>${esc(r.text)}</b>${compact ? '' : `<small>${r.openEnd ? 'ca. ' : ''}${K.fmtH(r.workH)} h${r.label ? ' · ' + esc(r.label) : ''}</small>`}${r.note ? `<small class="note">${esc(r.note)}</small>` : ''}</span>`;
   }
   if (r.type === 'status') {
     const st = K.STATUS[r.status] || {};
@@ -335,7 +335,7 @@ export async function editEntry(date, empId) {
     <div class="pane" data-pane="custom">
       <div class="row3">
         <label class="field"><span>Beginn</span><input type="time" name="start" value="${esc(startV)}"></label>
-        <label class="field"><span>Ende</span><input type="time" name="end" value="${esc(endV)}"></label>
+        <label class="field"><span>Ende (leer = offen)</span><input type="time" name="end" value="${esc(endV)}"></label>
         <label class="field"><span>Pause (min)</span><input type="number" name="pause" min="0" step="5" inputmode="numeric" placeholder="auto" value="${st.pause ?? ''}"></label>
       </div>
     </div>
@@ -345,7 +345,7 @@ export async function editEntry(date, empId) {
     </div>
     <label class="field"><span>Notiz (z. B. Judge, Prerelease)</span><input name="note" value="${esc(st.note && pe && pe.source !== 'feiertag' ? st.note : (alive(cur) ? cur.note || '' : ''))}" maxlength="80"></label>
     <p class="calc" id="calc"></p>
-    ${recorded ? `<p class="small muted">Vom Mitarbeiter erfasst: ${recorded.status ? esc(recorded.status) : `${esc(recorded.start)}–${esc(recorded.end)}`}</p>` : ''}
+    ${recorded ? `<p class="small muted">Vom Mitarbeiter erfasst: ${recorded.status ? esc(recorded.status) : `${esc(recorded.start)}–${esc(recorded.end || 'offen')}`}</p>` : ''}
     ${pe && pe.source === 'vorlage' ? '<p class="small muted">Aktuell aus dem fixen Wochenplan.</p>' : ''}
     <p class="btn-row"><button class="link" type="button" data-act="planer-swap" data-d="${date}" data-e="${empId}">⇄ Mit jemandem tauschen</button>${!emp.noTimes && date <= K.today() ? `<button class="link" type="button" data-act="plan-time" data-d="${date}" data-e="${empId}">⏱ Arbeitszeit eintragen</button>` : ''}</p>
     ${pe && pe.source === 'feiertag' ? `<p class="small muted">Feiertag: ${esc(pe.note)}</p>` : ''}`;
@@ -393,8 +393,8 @@ export async function editEntry(date, empId) {
         if (!f.shiftId) { toast('Bitte eine Schicht wählen', 'error'); return false; }
         rec = { kind: 'shift', shiftId: f.shiftId };
       } else if (f.kind === 'custom') {
-        if (K.parseTime(f.start) === null || K.parseTime(f.end) === null) { toast('Beginn und Ende eingeben', 'error'); return false; }
-        rec = { kind: 'shift', start: f.start, end: f.end };
+        if (K.parseTime(f.start) === null) { toast('Beginn eingeben', 'error'); return false; }
+        rec = { kind: 'shift', start: f.start, end: K.parseTime(f.end) === null ? '' : f.end };
         if (f.pause !== '') rec.pause = Number(f.pause);
       } else if (f.kind === 'status') {
         if (!f.status) { toast('Bitte auswählen', 'error'); return false; }
@@ -417,7 +417,7 @@ export async function editEntry(date, empId) {
 
 function calcText(start, end, pause, s) {
   const d = K.durationMin(start, end);
-  if (d === null) return '';
+  if (d === null) return K.parseTime(start) !== null ? 'Offenes Ende (z. B. Event): gezählt wird die Zeit, die die Person danach erfasst.' : '';
   const p = pause === '' || pause === undefined ? K.autoPauseMin(start, end, s) : Number(pause);
   return `${K.fmtH(d / 60)} h Anwesenheit − ${p} min Pause = ${K.fmtH(Math.max(0, d - p) / 60)} h Arbeitszeit`;
 }

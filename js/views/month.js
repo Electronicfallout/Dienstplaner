@@ -117,7 +117,7 @@ act('export-xlsx', async () => {
     const row = [K.WOCHENTAGE[K.weekday(d)], K.fmtDate(d, true)];
     for (const e of emps) {
       const r = employed(e, d) ? resolve(plan, planEntry(plan, d, e.id), e, d) : null;
-      row.push(r ? (r.type === 'shift' ? `${r.start} - ${r.end}` : r.text) + (r.note && r.type !== 'note' ? ` (${r.note})` : '') : '');
+      row.push(r ? (r.type === 'shift' ? `${r.start} - ${r.end || 'offen'}` : r.text) + (r.note && r.type !== 'note' ? ` (${r.note})` : '') : '');
       row.push(r && (r.workH || r.creditH) ? Math.round((r.workH + r.creditH) * 100) / 100 : '');
     }
     row.push([K.holidayName(d, plan.settings), ...eventsOn(plan, d).filter((e) => !e.noPrint).map((e) => e.title)].filter(Boolean).join(' · '), day.note || '');
