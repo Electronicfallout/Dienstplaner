@@ -430,8 +430,12 @@ export function rerender() {
   const v = App.views[App.view];
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === App.view));
   const scroll = window.scrollY;
+  // Scrollstand der Tabellen behalten, wenn nach dem Synchronisieren neu gezeichnet wird
+  const boxes = Array.from(main.querySelectorAll('.table-scroll')).map((b) => [b.scrollLeft, b.scrollTop]);
+  const jumping = App.jumpPending;
   v.render(main);
   window.scrollTo(0, scroll);
+  if (!jumping) main.querySelectorAll('.table-scroll').forEach((b, i) => { if (boxes[i]) { b.scrollLeft = boxes[i][0]; b.scrollTop = boxes[i][1]; } });
 }
 
 act('nav', ({ view }) => {

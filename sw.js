@@ -1,6 +1,6 @@
 // Offline-Unterstützung: App-Dateien und Bibliotheken zwischenspeichern.
 // Dropbox-Aufrufe werden nie zwischengespeichert.
-const VERSION = 'dp-v59';
+const VERSION = 'dp-v60';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/main.js', 'js/app.js', 'js/calc.js', 'js/crypto.js', 'js/storage.js', 'js/store.js', 'js/model.js', 'js/ui.js', 'js/import-excel.js', 'js/keystore.js', 'js/notify.js', 'js/ics.js', 'js/pdf.js', 'js/proposals.js', 'js/saturday.js', 'js/dnd.js', 'js/version.js', 'js/reports.js', 'js/jump.js',
