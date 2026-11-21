@@ -114,7 +114,7 @@ function render(main) {
 
   // Alle Urlaube des Jahres als Liste (zusammenhängende Tage zusammengefasst)
   const all = [];
-  for (const e of employeesSorted(plan).filter(tracked)) {
+  for (const e of employeesSorted(plan)) {
     let cur = null;
     for (let d = `${y}-01-01`; d <= `${y}-12-31`; d = K.addDays(d, 1)) {
       const pe = planEntry(plan, d, e.id);
@@ -159,24 +159,56 @@ async function rangeDialog(title, { withEmp, withNote, okLabel }) {
     title,
     body: `
       ${withEmp ? `<label class="field"><span>Mitarbeiter</span><select name="emp">${employeesSorted(plan).map((e) => `<option value="${e.id}">${esc(e.name)}</option>`).join('')}</select></label>` : ''}
-      <div class="row2">
-        <label class="field"><span>Von</span><input type="date" name="from" value="${t}"></label>
-        <label class="field"><span>Bis</span><input type="date" name="to" value="${t}"></label>
-      </div>
+      <input type="hidden" name="from" value=""><input type="hidden" name="to" value="">
+      <p class="small muted rc-hint">Ersten Tag antippen, dann den letzten Tag. Für einen einzelnen Tag einfach zweimal antippen.</p>
+      <div class="rcal" id="rcal"></div>
       <div class="seg"><label><input type="radio" name="kind" value="Urlaub" checked><span>Urlaub</span></label><label><input type="radio" name="kind" value="ZA"><span>Zeitausgleich</span></label></div>
       ${withNote ? '<label class="field"><span>Notiz (optional)</span><input name="note" maxlength="120"></label>' : ''}
       <p class="calc" id="calc"></p>`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: okLabel, kind: 'primary', value: 'ok' }],
     onOpen(root) {
+      // Kalender zum Antippen: erster Tipp = Beginn, zweiter = Ende
+      let from = '', to = '';
+      let view = K.parseIso(t);
+      const box = root.querySelector('#rcal');
       const upd = () => {
-        const f = formData(root);
-        if (f.from && f.to && f.to < f.from) root.querySelector('[name=to]').value = f.from;
-        const g = formData(root);
-        if (!g.from || !g.to) return;
-        const n = requestDays(plan, g.from, g.to).filter((d) => K.weekday(d) < 5).length;
-        root.querySelector('#calc').textContent = `${n} Arbeitstage (Mo–Fr, ohne Feiertage)`;
+        root.querySelector('[name=from]').value = from;
+        root.querySelector('[name=to]').value = to || from;
+        const calc = root.querySelector('#calc');
+        if (!from) { calc.textContent = ''; return; }
+        const b = to || from;
+        const n = requestDays(plan, from, b).filter((d) => K.weekday(d) < 5).length;
+        calc.textContent = `${K.fmtDate(from, true)}${b !== from ? ` bis ${K.fmtDate(b, true)}` : ''}: ${n} Arbeitstage (Mo–Fr, ohne Feiertage)${to ? '' : ' · jetzt den letzten Tag antippen'}`;
       };
-      root.addEventListener('input', upd); root.addEventListener('change', upd); upd();
+      const draw = () => {
+        const { y, m } = view;
+        const days = K.monthDays(y, m);
+        const lead = K.weekday(days[0]);
+        const b = to || from;
+        box.innerHTML = `<div class="rc-head"><button type="button" class="icon-btn" data-rc="-1" aria-label="Voriger Monat">‹</button><b>${K.MONATE[m - 1]} ${y}</b><button type="button" class="icon-btn" data-rc="1" aria-label="Nächster Monat">›</button></div>
+          <div class="rc-grid">${['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((w) => `<span class="rc-wd">${w}</span>`).join('')}${'<span></span>'.repeat(lead)}${days.map((d) => {
+            const wd = K.weekday(d);
+            const cls = [wd >= 5 ? 'we' : '', K.holidayName(d, plan.settings) ? 'hol' : '', d === t ? 'now' : '',
+              from && d >= from && d <= b ? 'sel' : '', d === from ? 'start' : '', d === b && from ? 'end' : ''].filter(Boolean).join(' ');
+            return `<button type="button" class="rc-day ${cls}" data-day="${d}">${K.parseIso(d).d}</button>`;
+          }).join('')}</div>`;
+      };
+      box.addEventListener('click', (e) => {
+        const nav = e.target.closest('[data-rc]');
+        if (nav) {
+          let { y, m } = view; m += +nav.dataset.rc;
+          if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; }
+          view = { y, m }; draw(); return;
+        }
+        const b = e.target.closest('[data-day]');
+        if (!b) return;
+        const d = b.dataset.day;
+        if (!from || to) { from = d; to = ''; } // neuer Zeitraum
+        else if (d < from) { from = d; }
+        else { to = d; }
+        draw(); upd();
+      });
+      draw(); upd();
     },
     onAction(v, root) {
       if (!v) return null;

@@ -387,3 +387,18 @@ body.printmode table.plan td:not(.ev):not(.evcol), body.printmode table.plan th 
 @media print { .jump-toggle { display: none; } }
 table.yearview thead th.today { background: var(--accent); }
 table.yearview tr.me th { font-weight: 700; }
+
+/* Zeitraum-Kalender (Urlaub) */
+.rcal { margin: 4px 0 10px; user-select: none; }
+.rc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.rc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.rc-wd { text-align: center; font-size: .75rem; color: var(--muted); padding: 2px 0; }
+.rc-day { border: 0; background: transparent; color: var(--text); font: inherit; padding: 9px 0; border-radius: 8px; cursor: pointer; }
+.rc-day.we { color: var(--muted); }
+.rc-day.hol { color: #c0392b; }
+.rc-day.now { box-shadow: inset 0 0 0 1px var(--accent); }
+.rc-day.sel { background: var(--accent-soft); border-radius: 0; }
+.rc-day.start, .rc-day.end { background: var(--accent); color: var(--accent-text); }
+.rc-day.start { border-radius: 8px 0 0 8px; }
+.rc-day.end { border-radius: 0 8px 8px 0; }
+.rc-day.start.end { border-radius: 8px; }
