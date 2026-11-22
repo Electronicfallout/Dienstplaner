@@ -246,8 +246,11 @@ table.times tr.week-sum td { background: var(--surface-2); border-bottom: 2px so
 table.times .num .diff { margin-left: 0; }
 @media (max-width: 600px) {
   table.times { font-size: .85rem; }
-  table.times th, table.times td { padding: 6px 5px; overflow-wrap: anywhere; }
-  table.times td:first-child { white-space: nowrap; }
+  table.times th, table.times td { padding: 6px 4px; overflow-wrap: anywhere; }
+  table.times td:first-child { white-space: normal; overflow-wrap: normal; }
+  .saldo-detail { padding: 8px 6px; }
+  .saldo-detail table.times { font-size: .8rem; }
+  .saldo-detail table.times th, .saldo-detail table.times td { padding: 5px 3px; }
 }
 .quick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--accent-soft); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
 .quick span { flex: 1 1 200px; }

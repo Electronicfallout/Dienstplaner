@@ -34,6 +34,7 @@ function render(main) {
   const stToday = monthStats(plan, emp, y, m, times, cu);
   const sd = saldoDetail(plan, emp, cu, times);
   const saldo = sd.saldo;
+  const hasZA = sd.weeks.some((w) => w.za);
   const sg = (h) => `${h >= 0 ? '+' : ''}${K.fmtH(h)} h`;
 
   let accessNote = '';
@@ -100,9 +101,9 @@ function render(main) {
     </table></div>
     <details class="card saldo-detail"><summary><b>Wie kommt das Zeitkonto zustande?</b></summary>
       <p class="small muted">Gerechnet ab <b>${K.fmtDate(sd.from, true)}</b> bis ${K.fmtDate(cu, true)}. Frühere Tage zählen nicht${admin ? ' (ändern: Einstellungen → Mitarbeiter → „Zeitkonto zählt ab“)' : ''}. Pro Woche: Ist (gearbeitet plus Feiertag/Krankenstand/Zeitausgleich; Urlaubstage zählen gar nicht) minus Soll, minus Zeitausgleich, plus Zuschlag.</p>
-      <table class="times"><thead><tr><th>Woche</th><th class="num">Soll</th><th class="num">Ist</th><th class="num">ZA</th><th class="num">±</th></tr></thead>
-      <tbody>${sd.weeks.map((w) => { const d = w.ist + w.credit - w.za - w.soll + w.bonus; return `<tr><td>KW ${K.isoWeek(w.mon)}<small>${K.fmtDate(w.mon)}${w.offen ? ` · ${w.offen} Tag${w.offen > 1 ? 'e' : ''} nicht erfasst` : ''}</small></td><td class="num">${K.fmtH(w.soll)}</td><td class="num">${K.fmtH(w.ist + w.credit)}${w.bonus ? `<small>+${K.fmtH(w.bonus)} Z</small>` : ''}</td><td class="num">${w.za ? '−' + K.fmtH(w.za) : ''}</td><td class="num ${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${K.fmtH(d)}</td></tr>`; }).join('')}</tbody>
-      <tfoot>${sd.startH ? `<tr><td colspan="4">Alte Überstunden</td><td class="num">${sg(sd.startH)}</td></tr>` : ''}<tr><td colspan="4">Zeitkonto</td><td class="num"><b>${sg(saldo)}</b></td></tr></tfoot></table>
+      <table class="times"><thead><tr><th>Woche</th><th class="num">Soll</th><th class="num">Ist</th>${hasZA ? '<th class="num">ZA</th>' : ''}<th class="num">±</th></tr></thead>
+      <tbody>${sd.weeks.map((w) => { const d = w.ist + w.credit - w.za - w.soll + w.bonus; return `<tr><td>KW ${K.isoWeek(w.mon)}<small>${K.fmtDate(w.mon)}${w.offen ? ` · ${w.offen} Tag${w.offen > 1 ? 'e' : ''} nicht erfasst` : ''}</small></td><td class="num">${K.fmtH(w.soll)}</td><td class="num">${K.fmtH(w.ist + w.credit)}${w.bonus ? `<small>+${K.fmtH(w.bonus)} Z</small>` : ''}</td>${hasZA ? `<td class="num">${w.za ? '−' + K.fmtH(w.za) : ''}</td>` : ''}<td class="num ${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '+' : ''}${K.fmtH(d)}</td></tr>`; }).join('')}</tbody>
+      <tfoot>${sd.startH ? `<tr><td colspan="${hasZA ? 4 : 3}">Alte Überstunden</td><td class="num">${sg(sd.startH)}</td></tr>` : ''}<tr><td colspan="${hasZA ? 4 : 3}">Zeitkonto</td><td class="num"><b>${sg(saldo)}</b></td></tr></tfoot></table>
     </details>
     <p class="hint">${admin ? 'Ist = erfasste Zeit, sonst die geplante. ' : 'Tippe auf einen Tag, um deine tatsächliche Zeit einzutragen. Ohne Eintrag zählt die geplante Zeit. '}Feiertage, Zeitausgleich und Krankenstand zählen bei Ist mit. Urlaubstage zählen gar nicht (kein Soll, kein Ist), sie laufen über das Urlaubskonto. Der heutige Tag zählt erst, wenn er erfasst oder der Dienst vorbei ist. Ab ${esc(plan.settings.pauseAfterH)} Stunden werden automatisch ${esc(plan.settings.pauseMin)} Minuten Pause abgezogen. Arbeit ab ${esc(plan.settings.nightFrom || '21:00')} zählt mit ${K.fmtH(Number(plan.settings.nightFactor ?? 1.5))}: Der Aufschlag (Z) kommt getrennt aufs Zeitkonto.</p>`;
 
