@@ -132,6 +132,20 @@ export class DropboxProvider {
     return { rev: meta.rev };
   }
 
+  // Textdatei schreiben und eine vorhandene überschreiben (für das Kalender-Abo; ein geteilter Link bleibt dabei gültig)
+  async writeText(path, text) {
+    const r = await this.call('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Dropbox-API-Arg': asciiJson({ path: '/' + path, mode: { '.tag': 'overwrite' }, autorename: false, mute: true }),
+      },
+      body: new Blob([text]),
+    });
+    if (!r.ok) throw new Error('Dropbox-Fehler ' + r.status + ': ' + (await r.text()));
+    return r.json();
+  }
+
   async list(folder) {
     const r = await this.call('https://api.dropboxapi.com/2/files/list_folder', {
       method: 'POST',

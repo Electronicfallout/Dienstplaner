@@ -51,6 +51,16 @@ Weitere Planer-PCs: dort genauso **Ich plane** mit demselben App key und derselb
 - **iPhone**: Link in **Safari** öffnen → Teilen → **Zum Home-Bildschirm**. Danach die App vom Home-Bildschirm öffnen und dort **Ich bin Mitarbeiter** → Code einfügen (die App am Home-Bildschirm hat einen eigenen Speicher, deshalb den Code dort noch einmal eingeben).
 - Danach legt jeder sein **eigenes Passwort** fest. Vergessen? Der Planer kann es unter *Mitarbeiter → Bearbeiten → Passwort zurücksetzen* neu setzen.
 
+### 4. Kalender-Abo (optional, zum Testen)
+
+Unter *Einstellungen → Mitarbeiter → Bearbeiten* das Häkchen **Kalender-Abo** setzen. Die App schreibt dann die veröffentlichten Dienste dieser Person (31 Tage zurück bis „veröffentlicht bis“, sonst 120 Tage voraus) als `kalender/dienste-<name>-<kürzel>.ics` in den Dropbox-App-Ordner, nach jeder Planänderung neu.
+
+1. In der Dropbox die Datei öffnen → **Teilen** → **Link kopieren**. Am Ende des Links `dl=0` durch `dl=1` ersetzen.
+2. Google Kalender am PC öffnen → links bei **Weitere Kalender** auf **+** → **Per URL** → Link einfügen → **Kalender hinzufügen**.
+3. Google lädt die Datei nur alle paar Stunden neu; Änderungen kommen also verzögert an.
+
+Wer den Link hat, sieht die Dienste dieser Person. Link in der Dropbox löschen = Abo beendet.
+
 ## Sicherheit, ehrlich gesagt
 
 - Der Einladungscode erlaubt Zugriff auf den Dropbox-App-Ordner (nicht auf den Rest der Dropbox). Mitarbeiter sehen den Dienstplan, die Zeiten und Anträge der anderen sind aber verschlüsselt.

@@ -11,6 +11,7 @@ import { now, COLORS, merge, clone } from '../store.js';
 import { makeInvite, redirectUri } from '../storage.js';
 import { importExcel } from '../import-excel.js';
 import { satSettingsHtml } from '../saturday.js';
+import { feedPath, feedState, writeFeeds } from '../calfeed.js';
 
 function render(main) {
   const plan = App.plan.obj;
@@ -29,7 +30,7 @@ function render(main) {
         const state = h ? (h.missing ? 'noch nicht angemeldet' : h.error ? 'nicht lesbar' : 'angemeldet') : '';
         return `<li class="${e.active === false ? 'inactive' : ''}">
           <span class="dot" style="background:${safeColor(e.color)}"></span>
-          <div class="grow"><b>${esc(e.name)}</b><small>${e.noTimes ? 'ohne Zeiterfassung' : `${K.fmtH(e.weeklyHours)} h/Woche · Tagessoll ${K.fmtH(dayTarget(e, s))} h${e.workDays && e.workDays.length ? ' (' + e.workDays.map((i) => K.WOCHENTAGE[i]).join(', ') + ')' : ''}`}${e.startDate ? ' · ab ' + K.fmtDate(e.startDate, true) : ''}${e.endDate ? ' · bis ' + K.fmtDate(e.endDate, true) : ''}${state ? ' · ' + state : ''}</small></div>
+          <div class="grow"><b>${esc(e.name)}</b><small>${e.noTimes ? 'ohne Zeiterfassung' : `${K.fmtH(e.weeklyHours)} h/Woche · Tagessoll ${K.fmtH(dayTarget(e, s))} h${e.workDays && e.workDays.length ? ' (' + e.workDays.map((i) => K.WOCHENTAGE[i]).join(', ') + ')' : ''}`}${e.startDate ? ' · ab ' + K.fmtDate(e.startDate, true) : ''}${e.endDate ? ' · bis ' + K.fmtDate(e.endDate, true) : ''}${e.calFeed ? ' · Kalender-Abo' : ''}${state ? ' · ' + state : ''}</small></div>
           ${e.noTimes ? '' : `<button class="btn small" data-act="emp-invite" data-e="${esc(e.id)}">Einladen</button>`}
           <button class="btn small ghost" data-act="emp-edit" data-e="${esc(e.id)}">Bearbeiten</button>
         </li>`;
@@ -137,6 +138,10 @@ act('emp-edit', async ({ e: id }) => {
       <p class="small muted">Urlaub wird in Tagen gerechnet (Vollzeit 25 Tage pro Jahr). Ab dem Eintritt kommt jeden Monat am Eintrittstag ein Zwölftel dazu. Leeres Datum = gleicher Stichtag wie das Zeitkonto. Für neue Mitarbeiter: Eintritt eintragen, Resturlaub 0.</p>
       <label class="check"><input type="checkbox" name="noTimes" ${e.noTimes ? 'checked' : ''}><span>Keine Zeiterfassung (z. B. Chef, selbstständig): nur im Plan, ohne Soll, Stunden, Urlaubskonto und Einladung</span></label>
       <label class="check"><input type="checkbox" name="active" ${e.active !== false ? 'checked' : ''}><span>Aktiv (im Plan anzeigen)</span></label>
+      <label class="check"><input type="checkbox" name="calFeed" ${e.calFeed ? 'checked' : ''}><span>Kalender-Abo: Dienste als Kalenderdatei (.ics) in die Dropbox schreiben, z. B. für Google Kalender</span></label>
+      ${e.calFeed ? (() => { const st = feedState(e); return `<div class="small muted"><p>Datei im Dropbox-App-Ordner: <code>${esc(feedPath(e))}</code><br>${st ? 'Zuletzt geschrieben: ' + esc(new Date(st.at).toLocaleString('de-AT')) : 'Auf diesem Gerät noch nicht geschrieben.'}</p>
+        <p>Abonnieren: In der Dropbox die Datei teilen → Link kopieren, am Ende <code>dl=0</code> durch <code>dl=1</code> ersetzen. In Google Kalender (am PC) bei „Weitere Kalender“ auf + → „Per URL“ den Link einfügen. Google holt Änderungen nur alle paar Stunden.</p>
+        <button class="btn small" data-act="cal-write" data-e="${esc(id)}">Kalenderdatei jetzt schreiben</button></div>`; })() : ''}
       ${id ? `<hr><div class="btn-row"><button class="btn small" data-act="emp-reset-pw" data-e="${esc(id)}">Passwort zurücksetzen</button><button class="btn small danger" data-act="emp-delete" data-e="${esc(id)}">Löschen</button></div>` : ''}`,
     buttons: [{ label: 'Abbrechen', value: null }, { label: 'Speichern', kind: 'primary', value: 'save' }],
     onAction(v, root) {
@@ -158,10 +163,20 @@ act('emp-edit', async ({ e: id }) => {
       vacFrom: r.vacFrom || null, vacStartT: Number(r.vacStartT) || 0, vacStartH: null,
       workDays: (() => { const w = [0, 1, 2, 3, 4, 5].filter((i) => r['wd' + i]); return w.length && w.join() !== '0,1,2,3,4' ? w : null; })(),
       noTimes: !!r.noTimes,
+      calFeed: r.calFeed ? (old.calFeed || C.randomId(16)) : null,
       active: r.active, order: old.order ?? Object.keys(p.employees).length,
       updatedAt: now(),
     };
   });
+});
+
+act('cal-write', async () => {
+  if (App.cfg.mode !== 'dropbox') { toast('Zuerst mit Dropbox verbinden', 'error'); return; }
+  try {
+    await App.plan.sync();
+    const n = await writeFeeds(App.plan, App.provider, true);
+    toast(n ? 'Kalenderdatei geschrieben' : 'Kalender-Abo ist noch nicht gespeichert', n ? 'info' : 'error');
+  } catch (err) { toast('Nicht geschrieben: ' + (err.message || err), 'error'); }
 });
 
 act('emp-delete', async ({ e }) => {

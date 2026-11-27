@@ -7,6 +7,7 @@ import { esc, $, act, toast, openModal, promptPassword, confirmBox } from './ui.
 import { employeesSorted } from './model.js';
 import { getKey, setKey, clearKeys } from './keystore.js';
 import { updateBell, maybeShowOnStart, collect } from './notify.js';
+import { watchFeeds } from './calfeed.js';
 
 export const App = {
   cfg: null,
@@ -72,6 +73,7 @@ async function start() {
     App.plan.dirty = true;
   }
   await App.plan.saveCache();
+  watchFeeds(App.plan, App.provider);
   if (c.role === 'admin') await adminLogin();
   else await employeeLogin();
 }

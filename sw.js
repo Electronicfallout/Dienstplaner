@@ -1,9 +1,9 @@
 // Offline-Unterstützung: App-Dateien und Bibliotheken zwischenspeichern.
 // Dropbox-Aufrufe werden nie zwischengespeichert.
-const VERSION = 'dp-v64';
+const VERSION = 'dp-v65';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
-  'js/main.js', 'js/app.js', 'js/calc.js', 'js/crypto.js', 'js/storage.js', 'js/store.js', 'js/model.js', 'js/ui.js', 'js/import-excel.js', 'js/keystore.js', 'js/notify.js', 'js/ics.js', 'js/pdf.js', 'js/proposals.js', 'js/saturday.js', 'js/dnd.js', 'js/version.js', 'js/reports.js', 'js/jump.js',
+  'js/main.js', 'js/app.js', 'js/calc.js', 'js/crypto.js', 'js/storage.js', 'js/store.js', 'js/model.js', 'js/ui.js', 'js/import-excel.js', 'js/keystore.js', 'js/notify.js', 'js/ics.js', 'js/pdf.js', 'js/proposals.js', 'js/saturday.js', 'js/dnd.js', 'js/version.js', 'js/reports.js', 'js/jump.js', 'js/calfeed.js',
   'js/views/plan.js', 'js/views/month.js', 'js/views/times.js', 'js/views/vacation.js', 'js/views/settings.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
   'vendor/xlsx.full.min.js', 'vendor/qrcode.js', 'vendor/jspdf.umd.min.js', 'vendor/jspdf.plugin.autotable.min.js',
