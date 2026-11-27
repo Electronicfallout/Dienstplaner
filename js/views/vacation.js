@@ -128,7 +128,7 @@ function render(main) {
   const today = K.today();
   const fmtR = (r) => (r.from === r.to ? `${K.WOCHENTAGE[K.weekday(r.from)]} ${K.fmtDate(r.from, true)}` : `${K.fmtDate(r.from)} – ${K.fmtDate(r.to, true)}`);
   const allList = admin ? `<section class="card"><div class="card-head"><h2>Alle Urlaube ${y}</h2></div>
-    ${all.length ? [['Geplant', all.filter((r) => r.to >= today)], ['Bereits genommen', all.filter((r) => r.to < today).reverse()]].filter(([, l]) => l.length).map(([h, l]) => `<h3>${h} (${l.reduce((a, r) => a + r.n, 0)} Tage)</h3><ul class="list vac-list">${l.map((r) => `<li class="${r.to < today ? 'past' : r.from <= today ? 'now' : ''}"><span class="dot" style="background:${safeColor(r.e.color)}"></span><div class="grow"><b>${esc(r.e.name)}</b><small>${fmtR(r)}</small></div><span class="small">${r.n} ${r.n === 1 ? 'Tag' : 'Tage'}${r.from <= today && r.to >= today ? ' · <b>jetzt</b>' : ''}</span></li>`).join('')}</ul>`).join('') : '<p class="muted">Noch keine Urlaube eingetragen.</p>'}
+    ${all.length ? [['Geplant', all.filter((r) => r.to >= today)], ['Bereits genommen', all.filter((r) => r.to < today).reverse()]].filter(([, l]) => l.length).map(([h, l]) => `<h3>${h} (${l.reduce((a, r) => a + r.n, 0)} Tage)</h3><ul class="list vac-list">${l.map((r) => `<li class="${r.to < today ? 'past' : r.from <= today ? 'now' : ''}"><span class="dot" style="background:${safeColor(r.e.color)}"></span><div class="grow"><b>${esc(r.e.name)}</b><small>${fmtR(r)}</small></div><span class="small">${r.n} ${r.n === 1 ? 'Tag' : 'Tage'}${r.from <= today && r.to >= today ? ' · <b>jetzt</b>' : ''}</span><button class="btn small" data-act="v-edit" data-e="${esc(r.e.id)}" data-from="${esc(r.from)}" data-to="${esc(r.to)}" aria-label="Urlaub von ${esc(r.e.name)} bearbeiten">Bearbeiten</button></li>`).join('')}</ul>`).join('') : '<p class="muted">Noch keine Urlaube eingetragen.</p>'}
   </section>` : '';
 
   const myDays = !admin ? `<h3>Eingetragene Urlaubstage ${y}</h3><p>${ranges(acc[0].v.tage).join(', ') || '<span class="muted">Keine</span>'}</p>` : '';
@@ -154,9 +154,10 @@ function writeDays(p, empId, days, status) {
   }
 }
 
-async function rangeDialog(title, { withEmp, withNote, okLabel }) {
+async function rangeDialog(title, { withEmp, withNote, okLabel, initial, withDelete }) {
   const plan = App.plan.obj;
   const t = K.today();
+  const kind0 = initial && initial.kind === 'ZA' ? 'ZA' : 'Urlaub';
   return openModal({
     title,
     body: `
@@ -164,14 +165,14 @@ async function rangeDialog(title, { withEmp, withNote, okLabel }) {
       <input type="hidden" name="from" value=""><input type="hidden" name="to" value="">
       <p class="small muted rc-hint">Ersten Tag antippen, dann den letzten Tag. Für einen einzelnen Tag einfach zweimal antippen.</p>
       <div class="rcal" id="rcal"></div>
-      <div class="seg"><label><input type="radio" name="kind" value="Urlaub" checked><span>Urlaub</span></label><label><input type="radio" name="kind" value="ZA"><span>Zeitausgleich</span></label></div>
+      <div class="seg"><label><input type="radio" name="kind" value="Urlaub" ${kind0 === 'Urlaub' ? 'checked' : ''}><span>Urlaub</span></label><label><input type="radio" name="kind" value="ZA" ${kind0 === 'ZA' ? 'checked' : ''}><span>Zeitausgleich</span></label></div>
       ${withNote ? '<label class="field"><span>Notiz (optional)</span><input name="note" maxlength="120"></label>' : ''}
       <p class="calc" id="calc"></p>`,
-    buttons: [{ label: 'Abbrechen', value: null }, { label: okLabel, kind: 'primary', value: 'ok' }],
+    buttons: [{ label: 'Abbrechen', value: null }, ...(withDelete ? [{ label: 'Löschen', kind: 'danger', value: 'del' }] : []), { label: okLabel, kind: 'primary', value: 'ok' }],
     onOpen(root) {
       // Kalender zum Antippen: erster Tipp = Beginn, zweiter = Ende
-      let from = '', to = '';
-      let view = K.parseIso(t);
+      let from = (initial && initial.from) || '', to = (initial && initial.to) || '';
+      let view = K.parseIso(from || t);
       const box = root.querySelector('#rcal');
       const upd = () => {
         root.querySelector('[name=from]').value = from;
@@ -214,6 +215,7 @@ async function rangeDialog(title, { withEmp, withNote, okLabel }) {
     },
     onAction(v, root) {
       if (!v) return null;
+      if (v === 'del') return { del: true };
       const f = formData(root);
       if (!f.from || !f.to || f.to < f.from) { toast('Zeitraum prüfen', 'error'); return false; }
       return f;
@@ -227,6 +229,36 @@ act('v-enter', async () => {
   const days = requestDays(App.plan.obj, f.from, f.to);
   App.plan.update((p) => writeDays(p, f.emp, days, f.kind));
   toast(`${days.length} Tage eingetragen`);
+});
+
+// Eingetragenen Urlaub (zusammenhängender Zeitraum aus „Alle Urlaube“) ändern oder löschen
+act('v-edit', async ({ e, from, to }) => {
+  const plan = App.plan.obj;
+  const emp = plan.employees[e];
+  if (!emp || !from || !to) return;
+  // nur die Tage, die wirklich als Urlaub eingetragen sind
+  const oldDays = [];
+  for (let d = from; d <= to; d = K.addDays(d, 1)) {
+    const pe = planEntry(plan, d, e);
+    if (pe && pe.kind === 'status' && pe.status === 'Urlaub') oldDays.push(d);
+  }
+  if (!oldDays.length) return;
+  const f = await rangeDialog(`Urlaub bearbeiten: ${emp.name}`, { okLabel: 'Speichern', withDelete: true, initial: { from, to, kind: 'Urlaub' } });
+  if (!f) return;
+  if (f.del) {
+    if (!(await confirmBox(`Urlaub von ${emp.name} ${K.fmtDate(from, true)}${from !== to ? ' – ' + K.fmtDate(to, true) : ''} löschen (${oldDays.length} ${oldDays.length === 1 ? 'Tag' : 'Tage'})?`, 'Löschen', true))) return;
+    App.plan.update((p) => { const t = now(); for (const d of oldDays) setEntry(p, d, e, null, t); });
+    toast('Urlaub gelöscht');
+    return;
+  }
+  const days = requestDays(App.plan.obj, f.from, f.to);
+  App.plan.update((p) => {
+    const t = now();
+    const keep = new Set(days);
+    for (const d of oldDays) if (!keep.has(d)) setEntry(p, d, e, null, t);
+    writeDays(p, e, days, f.kind);
+  });
+  toast(`Geändert: ${K.fmtDate(f.from, true)}${f.from !== f.to ? ' – ' + K.fmtDate(f.to, true) : ''}`);
 });
 
 act('v-request', async () => {
