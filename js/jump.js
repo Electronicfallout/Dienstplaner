@@ -27,7 +27,10 @@ export function maybeJump(main) {
         const off = day.getBoundingClientRect().top - box.getBoundingClientRect().top - (th ? th.getBoundingClientRect().height : 0) - 8;
         box.scrollTop += off - day.getBoundingClientRect().height * 2;
       }
-      const head = (document.querySelector('.topbar') || { offsetHeight: 0 }).offsetHeight;
+      // Kopfzeile plus fixierte Monatsauswahl (am Handy nur deren ‹ Monat ›-Zeile)
+      const head = Array.from(document.querySelectorAll('.topbar, .month-bar, .month-switch'))
+        .filter((el) => getComputedStyle(el).position === 'sticky')
+        .reduce((h, el) => h + el.offsetHeight, 0);
       if (box && box.scrollHeight > box.clientHeight + 2) {
         window.scrollTo(0, Math.max(0, box.getBoundingClientRect().top + window.scrollY - head - 8));
       } else {

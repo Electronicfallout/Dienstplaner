@@ -28,12 +28,20 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
 // Plan-Tabellen so hoch machen, dass sie bis zum unteren Rand reichen: dann scrollt man in der Tabelle
 // und Namenszeile oben sowie Tagesspalte links bleiben stehen (wie fixierte Zeilen in Excel).
+// Im Monatsplan bleibt die Monatsauswahl oben stehen: dort passt die Tabelle genau unter Kopfzeile + Monatsauswahl.
 function fitTables() {
   const bar = document.querySelector('.tabs');
   const barH = bar && getComputedStyle(bar).position === 'fixed' ? bar.offsetHeight : 0;
+  const topbar = document.querySelector('.topbar');
+  document.documentElement.style.setProperty('--topbar-h', (topbar ? topbar.offsetHeight : 0) + 'px');
   document.querySelectorAll('.table-scroll').forEach((el) => {
     if (!el.querySelector(':scope > table.plan')) return;
-    const top = el.getBoundingClientRect().top + window.scrollY;
+    let top = el.getBoundingClientRect().top + window.scrollY;
+    if (el.querySelector(':scope > table.month')) {
+      top = Array.from(document.querySelectorAll('.topbar, .month-bar, .month-switch'))
+        .filter((s) => getComputedStyle(s).position === 'sticky')
+        .reduce((h, s) => h + s.offsetHeight, 0) + 4;
+    }
     const h = Math.max(300, window.innerHeight - top - barH - 12);
     el.style.maxHeight = h + 'px';
   });
