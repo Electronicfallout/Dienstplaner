@@ -47,8 +47,8 @@ function render(main) {
   const stats = emps.map((e) => monthStats(plan, e, y, m, null));
 
   main.innerHTML = `
-    <div class="toolbar">
-      <div class="nav-group">
+    <div class="toolbar month-bar">
+      <div class="nav-group month-switch">
         <button class="icon-btn" data-act="month" data-d="-1" aria-label="Voriger Monat">‹</button>
         <div class="period"><b>${K.MONATE[m - 1]} ${y}</b></div>
         <button class="icon-btn" data-act="month" data-d="1" aria-label="Nächster Monat">›</button>
@@ -100,7 +100,15 @@ act('month', ({ d }) => {
     if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; }
     App.month = { y, m };
   }
-  render(document.getElementById('main'));
+  const main = document.getElementById('main');
+  render(main);
+  // Wurde die Seite so weit gescrollt, dass die Namenszeile unter der Monatsauswahl steckt: Tabelle wieder direkt darunter zeigen
+  const bar = Array.from(main.querySelectorAll('.month-bar, .month-switch')).find((el) => el.offsetHeight && getComputedStyle(el).position === 'sticky');
+  const box = main.querySelector('.table-scroll');
+  if (bar && box) {
+    const gap = box.getBoundingClientRect().top - bar.getBoundingClientRect().bottom - 4;
+    if (gap < 0) window.scrollBy(0, gap);
+  }
 });
 
 act('edit-entry-m', ({ d, e }) => editEntry(d, e));

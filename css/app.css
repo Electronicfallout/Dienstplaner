@@ -167,6 +167,15 @@ textarea { resize: vertical; font-family: ui-monospace, Consolas, monospace; fon
 .select-inline select { min-width: 160px; }
 .hint { color: var(--muted); font-size: .83rem; margin-top: 12px; }
 
+/* Monatsplan: Monatsauswahl bleibt beim Scrollen oben stehen (unter der Kopfzeile) */
+.toolbar.month-bar { position: sticky; top: var(--topbar-h, 50px); z-index: 15; background: var(--bg); margin: -8px 0 4px; padding: 8px 0; }
+@media (max-width: 759px) {
+  /* Am Handy nur die Zeile mit ‹ Monat › bzw. Heute fixieren, die Knöpfe darunter scrollen mit */
+  .toolbar.month-bar { display: contents; }
+  .toolbar.month-bar > .month-switch { position: sticky; top: var(--topbar-h, 47px); z-index: 15; background: var(--bg); margin: -6px -12px 0; padding: 6px 12px; }
+  .toolbar.month-bar > .nav-group:not(.month-switch) { margin: 4px 0 12px; }
+}
+
 /* ---------- Plan-Tabelle ---------- */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 /* Plan-Tabellen scrollen in sich: Namenszeile oben und Tagesspalte links bleiben stehen (wie fixierte Zeilen in Excel) */
@@ -348,6 +357,7 @@ body.printmode { --bg: #fff; --surface: #fff; --surface-2: #f2f2f2; --me: #fff; 
 body.printmode .topbar, body.printmode .tabs, body.printmode .toolbar .btn, body.printmode .toolbar .icon-btn, body.printmode .hint,
 body.printmode #toast, body.printmode .quick, body.printmode .notice, body.printmode .draft-tag, body.printmode .add-hint, body.printmode .gap, body.printmode .noprint { display: none !important; }
 body.printmode .toolbar { justify-content: flex-start; margin-bottom: 4px; }
+body.printmode .toolbar.month-bar, body.printmode .month-switch { position: static; display: flex; margin: 0; padding: 0; }
 body.printmode #main { padding: 0; max-width: none; margin: 0; }
 body.printmode .table-scroll { overflow: visible; border: 0; max-height: none !important; }
 body.printmode table.plan { font-size: 10px; width: auto; }
