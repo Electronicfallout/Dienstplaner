@@ -123,17 +123,17 @@ export function proposalsHtml(plan) {
     const txt = `<div class="grow">${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}${p.gaps && p.gaps.length ? `<small class="warn-text">⚠ Danach fehlt: ${esc(p.gaps.join(' · '))}</small>` : ''}</div>`;
     if (p.fromPlaner) {
       const open = pendingFor(plan, p);
-      if (admin && p.status === 'offen') rows.push(`<li><div class="grow">Dein Vorschlag: ${esc(describe(plan, p))}<small>wartet auf ${esc(open.map((id) => name(plan, id)).join(', '))}</small></div><div class="btn-row"><button class="btn small ghost" data-act="prop-withdraw" data-id="${esc(p.id)}">Zurückziehen</button></div></li>`);
-      else if (!admin && p.status === 'offen' && open.includes(me)) rows.push(`<li><div class="grow">Vorschlag vom Planer: ${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}</div><div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${esc(p.id)}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
+      if (admin && p.status === 'offen') rows.push(`<li data-prop="${esc(p.id)}"><div class="grow">Dein Vorschlag: ${esc(describe(plan, p))}<small>wartet auf ${esc(open.map((id) => name(plan, id)).join(', '))}</small></div><div class="btn-row"><button class="btn small ghost" data-act="prop-withdraw" data-id="${esc(p.id)}">Zurückziehen</button></div></li>`);
+      else if (!admin && p.status === 'offen' && open.includes(me)) rows.push(`<li data-prop="${esc(p.id)}"><div class="grow">Vorschlag vom Planer: ${esc(describe(plan, p))}${p.reason ? `<small>„${esc(p.reason)}“</small>` : ''}</div><div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${esc(p.id)}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
       continue;
     }
     if (admin && (needsPlaner(plan, p) || (p.kind === 'swap' && p.status === 'offen'))) {
       const waits = !needsPlaner(plan, p) ? `<small class="muted">wartet noch auf ${esc(name(plan, p.with))}, du kannst aber gleich entscheiden</small>` : '';
-      rows.push(`<li>${txt.replace(/<\/div>$/, waits + '</div>')}<div class="btn-row"><button class="btn small primary" data-act="prop-confirm" data-id="${esc(p.id)}">Bestätigen</button><button class="btn small" data-act="prop-reject" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
+      rows.push(`<li data-prop="${esc(p.id)}">${txt.replace(/<\/div>$/, waits + '</div>')}<div class="btn-row"><button class="btn small primary" data-act="prop-confirm" data-id="${esc(p.id)}">Bestätigen</button><button class="btn small" data-act="prop-reject" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
     } else if (!admin && p.kind === 'swap' && p.with === me && p.status === 'offen') {
-      rows.push(`<li>${txt}<div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${esc(p.id)}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
+      rows.push(`<li data-prop="${esc(p.id)}">${txt}<div class="btn-row"><button class="btn small primary" data-act="prop-accept" data-id="${esc(p.id)}">Annehmen</button><button class="btn small" data-act="prop-decline" data-id="${esc(p.id)}">Ablehnen</button></div></li>`);
     } else if (!admin && p.by === me && OPEN.includes(p.status)) {
-      rows.push(`<li>${txt}<div class="btn-row"><span class="small muted">${STATUS_TEXT[p.status]}${p.kind === 'swap' && p.status === 'offen' ? ` auf ${esc(name(plan, p.with))}` : p.status === 'offen' ? ' auf Planer' : ''}</span><button class="btn small ghost" data-act="prop-withdraw" data-id="${esc(p.id)}">Zurückziehen</button></div></li>`);
+      rows.push(`<li data-prop="${esc(p.id)}">${txt}<div class="btn-row"><span class="small muted">${STATUS_TEXT[p.status]}${p.kind === 'swap' && p.status === 'offen' ? ` auf ${esc(name(plan, p.with))}` : p.status === 'offen' ? ' auf Planer' : ''}</span><button class="btn small ghost" data-act="prop-withdraw" data-id="${esc(p.id)}">Zurückziehen</button></div></li>`);
     }
   }
   if (!rows.length) return '';
@@ -149,20 +149,20 @@ export function proposalNotices(plan) {
     if (p.date < K.addDays(K.today(), -7)) continue;
     const text = describe(plan, p);
     if (p.fromPlaner) {
-      if (admin && ['erledigt', 'abgelehnt'].includes(p.status)) news.push({ at: p.updatedAt, icon: p.status === 'erledigt' ? '✅' : '❌', text: `Dein Tauschvorschlag ${STATUS_TEXT[p.status]}: ${text}`, sub: p.reply || '', view: 'plan', date: p.date });
-      if (!admin && p.status === 'offen' && pendingFor(plan, p).includes(me)) todo.push({ icon: '🔁', text: 'Der Planer schlägt einen Tausch vor', sub: text, view: 'plan', date: p.date });
-      if (!admin && (p.by === me || p.with === me) && ['erledigt', 'abgelehnt'].includes(p.status)) news.push({ at: p.updatedAt, icon: p.status === 'erledigt' ? '✅' : '❌', text: `Tausch ${STATUS_TEXT[p.status]}: ${text}`, sub: p.reply || '', view: 'plan', date: p.date });
+      if (admin && ['erledigt', 'abgelehnt'].includes(p.status)) news.push({ at: p.updatedAt, icon: p.status === 'erledigt' ? '✅' : '❌', text: `Dein Tauschvorschlag ${STATUS_TEXT[p.status]}: ${text}`, sub: p.reply || '', view: 'plan', date: p.date, prop: p.id });
+      if (!admin && p.status === 'offen' && pendingFor(plan, p).includes(me)) todo.push({ icon: '🔁', text: 'Der Planer schlägt einen Tausch vor', sub: text, view: 'plan', date: p.date, prop: p.id });
+      if (!admin && (p.by === me || p.with === me) && ['erledigt', 'abgelehnt'].includes(p.status)) news.push({ at: p.updatedAt, icon: p.status === 'erledigt' ? '✅' : '❌', text: `Tausch ${STATUS_TEXT[p.status]}: ${text}`, sub: p.reply || '', view: 'plan', date: p.date, prop: p.id });
       continue;
     }
     if (admin) {
-      if (needsPlaner(plan, p)) todo.push({ icon: '✋', text: `Bitte entscheiden: ${text}`, sub: p.gaps && p.gaps.length ? `Danach fehlt: ${p.gaps.join(' · ')}` : '', view: 'plan', date: p.date });
-      else if (p.kind === 'swap' && p.status === 'erledigt' && !p.decidedBy) news.push({ at: p.updatedAt, icon: '🔁', text: `Getauscht: ${text}`, view: 'plan', date: p.date });
+      if (needsPlaner(plan, p)) todo.push({ icon: '✋', text: `Bitte entscheiden: ${text}`, sub: p.gaps && p.gaps.length ? `Danach fehlt: ${p.gaps.join(' · ')}` : '', view: 'plan', date: p.date, prop: p.id });
+      else if (p.kind === 'swap' && p.status === 'erledigt' && !p.decidedBy) news.push({ at: p.updatedAt, icon: '🔁', text: `Getauscht: ${text}`, view: 'plan', date: p.date, prop: p.id });
     } else {
-      if (p.kind === 'swap' && p.with === me && p.status === 'offen') todo.push({ icon: '🔁', text: `${name(plan, p.by)} möchte mit dir tauschen`, sub: text, view: 'plan', date: p.date });
+      if (p.kind === 'swap' && p.with === me && p.status === 'offen') todo.push({ icon: '🔁', text: `${name(plan, p.by)} möchte mit dir tauschen`, sub: text, view: 'plan', date: p.date, prop: p.id });
       if ((p.by === me || p.with === me) && ['erledigt', 'abgelehnt'].includes(p.status)) {
-        news.push({ at: p.updatedAt, icon: p.status === 'erledigt' ? '✅' : '❌', text: `${p.kind === 'swap' ? 'Tausch' : 'Vorschlag'} ${STATUS_TEXT[p.status]}: ${text}`, sub: p.reply || '', view: 'plan', date: p.date });
+        news.push({ at: p.updatedAt, icon: p.status === 'erledigt' ? '✅' : '❌', text: `${p.kind === 'swap' ? 'Tausch' : 'Vorschlag'} ${STATUS_TEXT[p.status]}: ${text}`, sub: p.reply || '', view: 'plan', date: p.date, prop: p.id });
       }
-      if (p.by === me && p.status === 'planer') news.push({ at: p.updatedAt, icon: '⏳', text: `Tausch angenommen, wartet auf den Planer: ${text}`, sub: p.gaps && p.gaps.length ? `Grund: danach fehlt ${p.gaps.join(' · ')}` : '', view: 'plan', date: p.date });
+      if (p.by === me && p.status === 'planer') news.push({ at: p.updatedAt, icon: '⏳', text: `Tausch angenommen, wartet auf den Planer: ${text}`, sub: p.gaps && p.gaps.length ? `Grund: danach fehlt ${p.gaps.join(' · ')}` : '', view: 'plan', date: p.date, prop: p.id });
     }
   }
   return { todo, news };

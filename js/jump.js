@@ -12,7 +12,43 @@ export function jumpToggleHtml() {
   return `<label class="jump-toggle" title="Beim Öffnen zum heutigen Tag${App.cfg.empId ? ' und zu deiner Spalte' : ''} springen"><input type="checkbox" data-jump-toggle ${jumpOn() ? 'checked' : ''}><span>Zu heute springen</span></label>`;
 }
 
+// Kopfzeile plus fixierte Monatsauswahl (am Handy nur deren ‹ Monat ›-Zeile)
+function stickyHead() {
+  return Array.from(document.querySelectorAll('.topbar, .month-bar, .month-switch'))
+    .filter((el) => getComputedStyle(el).position === 'sticky')
+    .reduce((h, el) => h + el.offsetHeight, 0);
+}
+
+// Aus einem Hinweis (Glocke) heraus: zur Tausch-Anfrage bzw. zum betroffenen Tag springen und kurz hervorheben
+function focusTarget(main, { prop, date }) {
+  requestAnimationFrame(() => {
+    let el = prop ? main.querySelector(`[data-prop="${CSS.escape(prop)}"]`) : null;
+    if (!el && date) el = main.querySelector(`[data-day="${CSS.escape(date)}"]`);
+    if (!el) return;
+    const head = stickyHead();
+    // Tabelle mit eigener Scrollhöhe: zuerst darin zur Zeile scrollen
+    const box = el.closest('.table-scroll');
+    if (box && box.scrollHeight > box.clientHeight + 2) {
+      const th = box.querySelector('thead');
+      box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - (th ? th.offsetHeight : 0) - 8;
+    }
+    const thead = !prop && el.closest('table') ? (el.closest('table').querySelector('thead') || { offsetHeight: 0 }).offsetHeight : 0;
+    window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - head - thead - (prop ? 40 : 16)));
+    el.classList.remove('focus-flash');
+    void el.offsetWidth; // Animation neu starten
+    el.classList.add('focus-flash');
+    setTimeout(() => el.classList.remove('focus-flash'), 2600);
+  });
+}
+
 export function maybeJump(main) {
+  if (App.focus) {
+    const f = App.focus;
+    App.focus = null;
+    App.jumpPending = false;
+    focusTarget(main, f);
+    return;
+  }
   if (!App.jumpPending) return;
   App.jumpPending = false;
   if (!jumpOn()) return;
@@ -27,10 +63,7 @@ export function maybeJump(main) {
         const off = day.getBoundingClientRect().top - box.getBoundingClientRect().top - (th ? th.getBoundingClientRect().height : 0) - 8;
         box.scrollTop += off - day.getBoundingClientRect().height * 2;
       }
-      // Kopfzeile plus fixierte Monatsauswahl (am Handy nur deren ‹ Monat ›-Zeile)
-      const head = Array.from(document.querySelectorAll('.topbar, .month-bar, .month-switch'))
-        .filter((el) => getComputedStyle(el).position === 'sticky')
-        .reduce((h, el) => h + el.offsetHeight, 0);
+      const head = stickyHead();
       if (box && box.scrollHeight > box.clientHeight + 2) {
         window.scrollTo(0, Math.max(0, box.getBoundingClientRect().top + window.scrollY - head - 8));
       } else {
