@@ -12,7 +12,36 @@ export function jumpToggleHtml() {
   return `<label class="jump-toggle" title="Beim Öffnen zum heutigen Tag${App.cfg.empId ? ' und zu deiner Spalte' : ''} springen"><input type="checkbox" data-jump-toggle ${jumpOn() ? 'checked' : ''}><span>Zu heute springen</span></label>`;
 }
 
+// Aus einem Hinweis (Glocke) heraus: zur Tausch-Anfrage bzw. zum betroffenen Tag springen und kurz hervorheben
+function focusTarget(main, { prop, date }) {
+  requestAnimationFrame(() => {
+    let el = prop ? main.querySelector(`[data-prop="${CSS.escape(prop)}"]`) : null;
+    if (!el && date) el = main.querySelector(`[data-day="${CSS.escape(date)}"]`);
+    if (!el) return;
+    const head = (document.querySelector('.topbar') || { offsetHeight: 0 }).offsetHeight;
+    // Tabelle mit eigener Scrollhöhe: zuerst darin zur Zeile scrollen
+    const box = el.closest('.table-scroll');
+    if (box && box.scrollHeight > box.clientHeight + 2) {
+      const th = box.querySelector('thead');
+      box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - (th ? th.offsetHeight : 0) - 8;
+    }
+    const thead = !prop && el.closest('table') ? (el.closest('table').querySelector('thead') || { offsetHeight: 0 }).offsetHeight : 0;
+    window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.scrollY - head - thead - (prop ? 40 : 16)));
+    el.classList.remove('focus-flash');
+    void el.offsetWidth; // Animation neu starten
+    el.classList.add('focus-flash');
+    setTimeout(() => el.classList.remove('focus-flash'), 2600);
+  });
+}
+
 export function maybeJump(main) {
+  if (App.focus) {
+    const f = App.focus;
+    App.focus = null;
+    App.jumpPending = false;
+    focusTarget(main, f);
+    return;
+  }
   if (!App.jumpPending) return;
   App.jumpPending = false;
   if (!jumpOn()) return;

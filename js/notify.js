@@ -107,7 +107,7 @@ function changeList(limitDays = 60) {
 
 export async function openNotices() {
   const c = collect();
-  const item = (n, unread) => `<li class="${unread ? 'unread' : ''} ${n.view ? 'clickable' : ''}" ${n.view ? `data-go="${esc(n.view)}" data-emp="${esc(n.emp)}" data-date="${esc(n.date)}"` : ''}>
+  const item = (n, unread) => `<li class="${unread ? 'unread' : ''} ${n.view ? 'clickable' : ''}" ${n.view ? `data-go="${esc(n.view)}" data-emp="${esc(n.emp)}" data-date="${esc(n.date)}" data-prop="${esc(n.prop)}"` : ''}>
     <span class="ic">${n.icon}</span><div class="grow">${esc(n.text)}${n.sub ? `<small>${esc(n.sub)}</small>` : ''}${n.at ? `<small>${new Date(n.at).toLocaleString('de-AT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</small>` : ''}</div></li>`;
   await openModal({
     title: 'Hinweise',
@@ -123,9 +123,11 @@ export async function openNotices() {
         const li = e.target.closest('[data-go]');
         if (!li) return;
         close(null);
-        const { go, emp, date } = li.dataset;
+        const { go, emp, date, prop } = li.dataset;
         if (emp) App.tEmp = emp;
         if (date) App.week = K.mondayOf(date);
+        // Im Plan direkt zur Tausch-Anfrage (oder zum betroffenen Tag) springen statt zu heute
+        if (go === 'plan' && (prop || date)) App.focus = { prop, date };
         document.querySelector(`.tab[data-view="${go}"]`)?.click();
       });
     },
